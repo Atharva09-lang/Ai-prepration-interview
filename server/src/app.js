@@ -7,7 +7,8 @@ import { sessionMiddleware } from './config/session.js';
 import healthRoutes from './routes/health.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
-
+import kitRoutes from './routes/kit.routes.js';
+import jobRoutes from './routes/job.routes.js';
 
 export function createApp({ sessionStore } = {}) {
   const app = express();
@@ -22,6 +23,8 @@ export function createApp({ sessionStore } = {}) {
 
   app.use('/api/health', healthRoutes);
   app.use('/api/auth', authRoutes);
+  app.use('/api/kits', kitRoutes);
+  app.use('/api/jobs', jobRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
