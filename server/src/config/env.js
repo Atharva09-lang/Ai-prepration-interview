@@ -15,7 +15,8 @@ const schema = z.object({
   MONGO_URI: z.string().optional(),
   SESSION_SECRET: z.string().optional(),
 
-  
+  // LLM provider key. Optional: when absent, llm/client.js falls back to the
+  // deterministic mock so tests and local dev run without credentials.
   GEMINI_API_KEY: z.string().optional(),
 });
 

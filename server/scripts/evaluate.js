@@ -1,3 +1,26 @@
+/**
+ * scripts/evaluate.js — mandatory batch entry point (brief §9).
+ *
+ *   npm run evaluate -- --input <cases.json> --output <kits.json>
+ *
+ * Reads an array of cases ({ id, jd, company_url, days }), runs the SAME
+ * retrieval → generation → validation pipeline the web app uses
+ * (pipeline/runPipeline.js, invoked here exactly as services/jobRunner.js
+ * does), and writes one Appendix B document.
+ *
+ * Guarantees required by the brief:
+ *  - Uses each case's own `days` when building the schedule.
+ *  - Continues after a case fails, recording the failure instead of aborting.
+ *  - A case we could only partially research is still "ok" (runPipeline treats
+ *    an unreachable site / missing hiring page as non-fatal and reports it
+ *    honestly inside the kit). "failed" is reserved for cases that produced no
+ *    kit at all.
+ *  - Reads credentials from env (see .env.example); with no key it falls back
+ *    to the deterministic mock, so it runs from a clean clone.
+ *  - Retrieval never assumes a host: company_url may be a local address, and
+ *    relative links are followed by the crawler.
+ */
+
 import { parseArgs } from 'node:util';
 import { readFile, writeFile } from 'node:fs/promises';
 
@@ -13,6 +36,7 @@ if (!values.input || !values.output) {
   process.exit(2);
 }
 
+/** Returns a human-readable problem with the case, or null if it is well-formed. */
 function validateCase(c) {
   if (!c || typeof c !== 'object') return 'case must be an object';
   if (typeof c.id !== 'string' || c.id.length === 0) return 'case.id must be a non-empty string';
@@ -24,6 +48,7 @@ function validateCase(c) {
   return null;
 }
 
+/** Normalises a thrown value into the Appendix B error shape. */
 function toError(err) {
   if (err instanceof AppError) return { code: err.code, message: err.message };
   return { code: 'PIPELINE_FAILED', message: err?.message ?? 'Unknown error' };
@@ -60,6 +85,11 @@ if (!Array.isArray(cases)) {
   console.error('[evaluate] input must be a JSON array of cases');
   process.exit(2);
 }
+
+// Run sequentially, not in parallel: free-tier LLM providers limit tokens per
+// minute, so fanning cases out at once is the quickest way to trip 429s. One at
+// a time keeps the run inside the 5-cases-in-15-minutes budget even with the
+// client's built-in retries.
 const kits = [];
 for (let i = 0; i < cases.length; i++) {
   const label = typeof cases[i]?.id === 'string' ? cases[i].id : `#${i}`;
