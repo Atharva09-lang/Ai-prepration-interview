@@ -2,7 +2,7 @@
  * llm/client.js — unified LLM client.
  *
  * Provider selection:
- *  - GEMINI_API_KEY set → use Google Gemini (gemini-1.5-flash, free tier)
+ *  - GEMINI_API_KEY set → use Google Gemini (gemini-3.6-flash, free tier)
  *  - Otherwise          → use the mock (safe for tests and local dev without a key)
  *
  * Retry policy:
@@ -22,7 +22,7 @@ const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 2000;
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const GEMINI_MODEL = 'gemini-1.5-flash';
+const GEMINI_MODEL = 'gemini-3.6-flash';
 
 function isRetryableStatus(status) {
   return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
@@ -80,21 +80,21 @@ async function callGemini(prompt, retryOnJsonError = true) {
       const data = await res.json();
       const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
-      // Parse JSON — Gemini returns JSON string inside text
+     
       try {
         return JSON.parse(rawText);
       } catch (parseErr) {
-        // Try to extract JSON from markdown code block
+      
         const match = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
         if (match) {
           try {
             return JSON.parse(match[1]);
-          } catch { /* fall through */ }
+          } catch {   }
         }
 
         if (retryOnJsonError && attempt < MAX_RETRIES) {
           await sleep(BASE_DELAY_MS);
-          // Recursive retry with one less retry allowed
+        
           return callGemini(prompt, false);
         }
 
@@ -117,15 +117,14 @@ async function callGemini(prompt, retryOnJsonError = true) {
 }
 
 /**
- * Generates structured output from the LLM.
  *
  * @param {{ type: string; prompt: string; useMock?: boolean }} opts
- * @returns {Promise<object>}  Parsed JSON from the LLM
+ * @returns {Promise<object>}  
  */
 export async function generateStructured({ type, prompt, useMock }) {
   if (!type) throw new Error('LLM generation type is required');
 
-  // Use mock when: explicitly requested, or no API key available
+
   const shouldMock = useMock ?? !env.GEMINI_API_KEY;
 
   if (shouldMock) {
