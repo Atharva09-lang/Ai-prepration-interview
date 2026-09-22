@@ -14,6 +14,9 @@ const schema = z.object({
 
   MONGO_URI: z.string().optional(),
   SESSION_SECRET: z.string().optional(),
+
+  
+  GEMINI_API_KEY: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -24,6 +27,7 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 export const isProduction = env.NODE_ENV === 'production';
+
 
 
 export function assertWebEnv() {

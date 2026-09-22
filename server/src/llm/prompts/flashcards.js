@@ -13,6 +13,8 @@ ${JSON.stringify(requirements, null, 2)}
 QUESTIONS:
 ${JSON.stringify(questions, null, 2)}
 
+${UNTRUSTED_CONTENT_RULE}
+
 Rules:
 1. Flashcards must help the candidate revise important interview concepts quickly.
 2. Each flashcard must reference one or more requirement IDs.

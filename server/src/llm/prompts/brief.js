@@ -1,3 +1,5 @@
+import { UNTRUSTED_CONTENT_RULE } from './safety.js';
+
 export function buildBriefPrompt({
   company,
   role,
@@ -17,6 +19,8 @@ ${JSON.stringify(role, null, 2)}
 RESEARCH:
 ${JSON.stringify(research, null, 2)}
 
+${UNTRUSTED_CONTENT_RULE}
+
 Rules:
 1. Use only information supported by the provided research.
 2. Do not invent company facts.
@@ -24,6 +28,7 @@ Rules:
 4. Explain what the company does in simple terms.
 5. Highlight information that can help the candidate understand the company before an interview.
 6. Include sources when they are available in the research.
+
 
 Return JSON only in this format:
 

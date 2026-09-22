@@ -10,9 +10,50 @@
 
 import { generateStructured } from '../../llm/client.js';
 import { buildCategoryQuestionsPrompt } from '../../llm/prompts/question.js';
-
+import { filterValidRequirementIds } from '../coverage.js';
 const CATEGORIES = ['technical', 'behavioural', 'system-design', 'company-fit'];
 
+
+const validDifficulty = (d) => (Number.isInteger(d) && d >= 1 && d <= 3 ? d : 2);
+
+
+/**
+ *
+ * @param {object[]} rawList             Raw `questions` array from the model
+ * @param {object[]} validRequirements   Requirements whose ids are acceptable
+ * @param {string}   category            Forced category for every question
+ * @param {number}   startId             First numeric id suffix to use
+ * @param {string|null} fallbackRequirementId  Id to use when the model gave none
+ * @returns {object[]}
+ */
+export function normalizeQuestions(rawList, validRequirements, category, startId, fallbackRequirementId = null) {
+  const validIds = new Set(validRequirements.map((r) => r.id));
+  const out = [];
+  let n = startId;
+
+  for (const q of Array.isArray(rawList) ? rawList : []) {
+    const prompt = typeof q?.prompt === 'string' ? q.prompt.trim() : '';
+    const answer_outline = typeof q?.answer_outline === 'string' ? q.answer_outline.trim() : '';
+    if (!prompt || !answer_outline) continue; // incomplete — drop rather than ship an invalid kit
+
+    let ids = filterValidRequirementIds(q?.requirement_ids, validIds);
+    if (!ids.length && fallbackRequirementId && validIds.has(fallbackRequirementId)) {
+      ids = [fallbackRequirementId];
+    }
+    if (!ids.length) continue; // no valid requirement link — drop
+
+    out.push({
+      id: `q${n++}`,
+      requirement_ids: ids,
+      category,
+      prompt,
+      answer_outline,
+      difficulty: validDifficulty(q?.difficulty),
+    });
+  }
+
+  return out;
+}
 /**
  * Maps requirement kinds to the categories that should cover them.
  * A requirement may be covered by more than one category.
@@ -78,23 +119,11 @@ export async function generateQuestions(requirements, role, research, startId = 
 
     try {
       const result = await generateStructured({ type: 'questions', prompt, useMock: false });
-      const questions = (result.questions ?? []).map((q) => ({
-        id: `q${nextId++}`,
-        requirement_ids: Array.isArray(q.requirement_ids) ? q.requirement_ids : [],
-        category,
-        prompt: q.prompt ?? '',
-        answer_outline: q.answer_outline ?? '',
-        difficulty: Number.isInteger(q.difficulty) && q.difficulty >= 1 && q.difficulty <= 3
-          ? q.difficulty
-          : 2,
-      }));
-      // Reassign IDs to ensure sequential continuity regardless of LLM output
-      questions.forEach((q, i) => {
-        q.id = `q${nextId - questions.length + i}`;
-      });
+       const questions = normalizeQuestions(result.questions ?? [], requirements, category, nextId);
+      nextId += questions.length;
       allQuestions.push(...questions);
     } catch (err) {
-      // Skip a failed category rather than aborting the whole pipeline
+      
       console.warn(`[questions] failed to generate ${category} questions:`, err.message);
     }
   }
@@ -136,16 +165,13 @@ export async function generateGapQuestions(gapRequirements, role, research, star
 
     try {
       const result = await generateStructured({ type: 'questions', prompt, useMock: false });
-      const questions = (result.questions ?? []).map((q, i) => ({
-        id: `q${nextId + i}`,
-        requirement_ids: Array.isArray(q.requirement_ids) ? q.requirement_ids : [reqs[0].id],
+        const questions = normalizeQuestions(
+        result.questions ?? [],
+        gapRequirements,
         category,
-        prompt: q.prompt ?? '',
-        answer_outline: q.answer_outline ?? '',
-        difficulty: Number.isInteger(q.difficulty) && q.difficulty >= 1 && q.difficulty <= 3
-          ? q.difficulty
-          : 2,
-      }));
+        nextId,
+        reqs[0].id,
+      );
       nextId += questions.length;
       allQuestions.push(...questions);
     } catch (err) {

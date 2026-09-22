@@ -1,3 +1,5 @@
+import { UNTRUSTED_CONTENT_RULE } from './safety.js';
+
 export function buildQuestionsPrompt({
   role,
   requirements,
@@ -16,6 +18,9 @@ ${JSON.stringify(requirements, null, 2)}
 
 RESEARCH:
 ${JSON.stringify(research, null, 2)}
+
+${UNTRUSTED_CONTENT_RULE}
+
 
 Rules:
 1. Generate questions directly from the requirements.
@@ -92,6 +97,9 @@ ${JSON.stringify(requirements, null, 2)}
 RESEARCH CONTEXT:
 ${researchContext}
 
+
+${UNTRUSTED_CONTENT_RULE}
+
 Rules:
 1. Every question MUST reference at least one requirement ID from the list above.
 2. All questions must have category: "${category}".
@@ -115,4 +123,4 @@ Return JSON only:
   ]
 }
 `.trim();
-}
+}

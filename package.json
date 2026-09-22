@@ -8,6 +8,6 @@
     "dev:server": "npm run dev --prefix server",
     "start": "npm run start --prefix server",
     "test": "npm test --prefix server",
-    "evaluate": "node server/scripts/evaluate.js"
+    "evaluate": "node scripts/evaluate.js"
   }
 }

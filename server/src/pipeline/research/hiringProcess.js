@@ -1,7 +1,7 @@
 
 
 import { generateStructured } from '../../llm/client.js';
-
+import { UNTRUSTED_CONTENT_RULE, untrustedBlock } from '../../llm/prompts/safety.js';
 
 const STAGE_PATTERNS = [
   { label: 'Application / CV review', patterns: ['application', 'cv review', 'resume review', 'apply'] },
@@ -77,8 +77,9 @@ Extract the interview/hiring process from the text below. Focus on stages, forma
 
 SOURCE URL: ${url}
 
-PAGE TEXT:
-${text}
+${untrustedBlock('PAGE TEXT', text)}
+
+${UNTRUSTED_CONTENT_RULE}
 
 Rules:
 1. Only use information present in the text. Do not invent stages.
