@@ -55,9 +55,9 @@ export default function KitDetailPage() {
   const [busySection, setBusySection] = useState(null);
   const [regenOpen, setRegenOpen] = useState(false);
   const [actionError, setActionError] = useState(null);
-  const [addState, setAddState] = useState(null); // { type: 'question'|'flashcard', category? }
+  const [addState, setAddState] = useState(null); 
 
-  // If the kit is still generating, poll the job so the timeline stays live.
+  
   const generating = kit?.status === 'generating';
   const jobId = generating ? job?.id ?? null : null;
   const { job: liveJob } = useJobPolling(jobId, {
@@ -70,7 +70,7 @@ export default function KitDetailPage() {
     setTimeout(() => setSavedId((cur) => (cur === key ? null : cur)), 1500);
   }, []);
 
-  // ── Mutations ──────────────────────────────────────────────────────────────
+ 
   const patchBrief = useCallback(
     async (field, value) => {
       const res = await api.patchKit(id, { company_brief: { [field]: value } });
@@ -149,11 +149,7 @@ export default function KitDetailPage() {
     [id, setKit],
   );
 
-  /**
-   * Reorder questions within one category. Global `order` values are preserved
-   * by remapping the category's items onto the exact slots they already occupy,
-   * so other categories are untouched. Only changed items are persisted.
-   */
+  
   const reorderQuestions = useCallback(
     async (category, orderedIds) => {
       const active = kit.questions.filter((q) => !q.deleted);
@@ -213,7 +209,7 @@ export default function KitDetailPage() {
     [reorderQuestions],
   );
 
-  // ── Derived data ───────────────────────────────────────────────────────────
+  
   const questionsByCategory = useMemo(() => {
     const map = {};
     for (const c of CATEGORY_ORDER) map[c] = [];
@@ -233,7 +229,7 @@ export default function KitDetailPage() {
     [kit],
   );
 
-  // ── Render states ────────────────────────────────────────────────────────
+  
   if (loading) {
     return (
       <AppShell wide>
@@ -317,7 +313,7 @@ export default function KitDetailPage() {
         />
 
         <div className="min-w-0 space-y-6">
-          {/* Header */}
+        
           <header className="rounded-xl border border-border bg-card p-6 shadow-soft">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
@@ -362,7 +358,7 @@ export default function KitDetailPage() {
             )}
           </header>
 
-          {/* Company Brief */}
+          
           <Section
             id="brief"
             title="Company Brief"
@@ -430,7 +426,6 @@ export default function KitDetailPage() {
             </div>
           </Section>
 
-          {/* Role Breakdown */}
           <Section id="role" title="Role Breakdown" description="Responsibilities and requirements for this role.">
             <div className="grid gap-6 md:grid-cols-2">
               <div>
@@ -475,7 +470,7 @@ export default function KitDetailPage() {
             </div>
           </Section>
 
-          {/* Question sections */}
+          
           {CATEGORY_ORDER.map((category) => (
             <QuestionSection
               key={category}
@@ -495,7 +490,7 @@ export default function KitDetailPage() {
             />
           ))}
 
-          {/* Flashcards */}
+          
           <Section
             id="flashcards"
             title="Flashcards"
@@ -601,8 +596,6 @@ export default function KitDetailPage() {
     </AppShell>
   );
 }
-
-// ── Sub-components ─────────────────────────────────────────────────────────────
 
 function QuestionSection({
   id,
