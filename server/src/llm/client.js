@@ -18,7 +18,7 @@ import { AppError } from '../utils/AppError.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 4;
 const BASE_DELAY_MS = 2000;
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -59,8 +59,12 @@ async function callGemini(prompt, retryOnJsonError = true) {
       });
 
       if (res.status === 429) {
-        const retryAfter = Number(res.headers.get('retry-after') ?? BASE_DELAY_MS / 1000);
-        const delay = Math.min(retryAfter * 1000, 30_000);
+        
+        const headerDelay = Number(res.headers.get('retry-after'));
+        const backoffSec = Number.isFinite(headerDelay) && headerDelay > 0
+          ? headerDelay
+          : (BASE_DELAY_MS / 1000) * 2 ** attempt;
+        const delay = Math.min(backoffSec * 1000, 30_000);
         if (attempt < MAX_RETRIES) {
           await sleep(delay);
           continue;
