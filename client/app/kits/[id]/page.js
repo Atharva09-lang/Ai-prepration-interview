@@ -401,7 +401,7 @@ export default function KitDetailPage() {
                   {kit.research.hiring_process.stages?.length > 0 && (
                     <ol className="mt-2 flex flex-wrap gap-1.5 px-2.5">
                       {kit.research.hiring_process.stages.map((s, i) => (
-                        <li key={s}><Badge tone="outline">{i + 1}. {s}</Badge></li>
+                        <li key={i}><Badge tone="outline">{i + 1}. {s}</Badge></li>
                       ))}
                     </ol>
                   )}
@@ -412,8 +412,8 @@ export default function KitDetailPage() {
                 <div>
                   <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">Sources</p>
                   <ul className="flex flex-wrap gap-1.5 px-2.5">
-                    {kit.company_brief.sources.map((s) => (
-                      <li key={s}>
+                    {kit.company_brief.sources.map((s, i) => (
+                      <li key={`${s}-${i}`}>
                         <a
                           href={s}
                           target="_blank"

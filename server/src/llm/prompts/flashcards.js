@@ -1,3 +1,5 @@
+import { UNTRUSTED_CONTENT_RULE } from './safety.js';
+
 export function buildFlashcardsPrompt({
   requirements,
   questions,
