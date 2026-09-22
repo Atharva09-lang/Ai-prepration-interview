@@ -1,0 +1,78 @@
+import { clsx } from 'clsx';
+
+/** Tailwind-friendly conditional class joiner. */
+export function cn(...inputs) {
+  return clsx(inputs);
+}
+
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:4000';
+
+export function formatDate(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+export function relativeTime(value) {
+  if (!value) return '—';
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return '—';
+  const diff = Date.now() - then;
+  const mins = Math.round(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return formatDate(value);
+}
+
+export function minutesLabel(minutes) {
+  if (!minutes) return '0 min';
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+export const CATEGORY_LABEL = {
+  technical: 'Technical',
+  behavioural: 'Behavioural',
+  'system-design': 'System design',
+  'company-fit': 'Company fit',
+};
+
+export const KIND_LABEL = {
+  technical: 'Technical',
+  behavioural: 'Behavioural',
+  domain: 'Domain',
+};
+
+export const DIFFICULTY_LABEL = {
+  1: 'Easy',
+  2: 'Medium',
+  3: 'Hard',
+};
+
+export function hostnameOf(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url || '';
+  }
+}
+
+/** Greeting based on local time, used on the dashboard header. */
+export function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+}
