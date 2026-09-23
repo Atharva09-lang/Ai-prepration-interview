@@ -7,9 +7,9 @@ export const SESSION_COOKIE_NAME = 'sid';
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export const sessionCookieOptions = {
-  httpOnly: true, 
-  secure: isProduction, 
-  sameSite: 'lax',
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
   maxAge: SESSION_TTL_MS,
 };
 
@@ -29,7 +29,7 @@ export function sessionMiddleware(store) {
     secret: env.SESSION_SECRET ?? (env.NODE_ENV === 'test' ? 'test-only-secret' : undefined),
     resave: false,
     saveUninitialized: false,
-    rolling: true, // active users stay signed in
+    rolling: true, 
     store,
     cookie: sessionCookieOptions,
   });

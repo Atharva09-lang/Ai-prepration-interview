@@ -26,7 +26,25 @@ export function QuestionCard({
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <Badge tone="primary">{CATEGORY_LABEL[question.category] ?? question.category}</Badge>
+            <label className="inline-flex items-center gap-1 text-xs text-muted">
+              <span className="sr-only">Category</span>
+              <select
+                value={question.category}
+                onChange={(e) => onEdit?.({ category: e.target.value })}
+                className={cn(
+                  'rounded-full border border-primary/20 bg-card px-2 py-0.5',
+                  'text-xs font-medium font-heading text-primary',
+                  'focus:outline-none focus:ring-2 focus:ring-primary/30',
+                )}
+                aria-label="Move question to category"
+                title="Move this question to another category"
+              >
+                {Object.entries(CATEGORY_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
+
             <label className="inline-flex items-center gap-1 text-xs text-muted">
               <span className="sr-only">Difficulty</span>
               <select
