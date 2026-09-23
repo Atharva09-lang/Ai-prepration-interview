@@ -727,8 +727,8 @@ function KitHealth({ kit, requirements, onRegenerate }) {
           </p>
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {failedSources.slice(0, 8).map((p, i) => (
-              <li key={`${i}-${p.url ?? ''}`}>
-                <Badge tone="outline" title={p.reason ?? ''}>{hostnameOf(p.url) || p.url}</Badge>
+              <li key={`${i}-${p.url ?? ''}`} title={p.reason ?? ''}>
+                <Badge tone="outline">{hostnameOf(p.url) || p.url}</Badge>
               </li>
             ))}
             {failedSources.length > 8 && (
