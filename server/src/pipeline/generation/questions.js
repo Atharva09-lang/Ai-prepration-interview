@@ -17,6 +17,19 @@ const CATEGORIES = ['technical', 'behavioural', 'system-design', 'company-fit'];
 const validDifficulty = (d) => (Number.isInteger(d) && d >= 1 && d <= 3 ? d : 2);
 
 /**
+ * Category generation is best-effort — a failed call must not abort the run.
+ * But a swallowed failure produces a kit with a silently empty section, which
+ * looks identical to "this category had nothing to say". Recording it in the
+ * kit's `warnings` keeps the failure visible to the user.
+ *
+ * @param {string[]|null} warnings  Kit warnings array, when the caller has one
+ * @param {string} message
+ */
+function pushWarning(warnings, message) {
+  if (Array.isArray(warnings)) warnings.push(message);
+}
+
+/**
  * Turns raw LLM output into schema-safe question objects.
  *
  * The model is untrusted: it can emit requirement ids that do not exist, an
@@ -113,9 +126,17 @@ function requirementsForCategory(requirements, category) {
  * @param {object}   research       Research result with hiringProcess + discussionSnippets
  * @param {string}   category       One of CATEGORIES
  * @param {number}   [startId=1]    Starting numeric suffix for question IDs
+ * @param {string[]} [warnings]     Kit warnings array — failed/empty categories are recorded here
  * @returns {Promise<object[]>}     Questions for this category only
  */
-export async function generateCategoryQuestions(requirements, role, research, category, startId = 1) {
+export async function generateCategoryQuestions(
+  requirements,
+  role,
+  research,
+  category,
+  startId = 1,
+  warnings = null,
+) {
   const reqs = requirementsForCategory(requirements, category);
   if (!reqs.length && category !== 'company-fit') return [];
 
@@ -129,10 +150,15 @@ export async function generateCategoryQuestions(requirements, role, research, ca
 
   try {
     const result = await generateStructured({ type: 'questions', prompt, useMock: false });
-    return normalizeQuestions(result.questions ?? [], requirements, category, startId);
+    const questions = normalizeQuestions(result.questions ?? [], requirements, category, startId);
+    if (!questions.length) {
+      pushWarning(warnings, `questions_empty: no usable ${category} questions were generated`);
+    }
+    return questions;
   } catch (err) {
-    // Skip a failed category rather than aborting the whole pipeline
+    // Skip a failed category rather than aborting the whole pipeline — but say so
     console.warn(`[questions] failed to generate ${category} questions:`, err.message);
+    pushWarning(warnings, `questions_failed: ${category} questions could not be generated (${err.message})`);
     return [];
   }
 }
@@ -145,9 +171,10 @@ export async function generateCategoryQuestions(requirements, role, research, ca
  * @param {object}   role           { title, seniority, responsibilities }
  * @param {object}   research       Research result with hiringProcess + discussionSnippets
  * @param {number}   [startId=1]    Starting numeric suffix for question IDs
+ * @param {string[]} [warnings]     Kit warnings array, forwarded to each category call
  * @returns {Promise<object[]>}     Flat array of question objects
  */
-export async function generateQuestions(requirements, role, research, startId = 1) {
+export async function generateQuestions(requirements, role, research, startId = 1, warnings = null) {
   if (!requirements.length) return [];
 
   const categories = categoriesToGenerate(requirements);
@@ -155,7 +182,14 @@ export async function generateQuestions(requirements, role, research, startId = 
   let nextId = startId;
 
   for (const category of categories) {
-    const questions = await generateCategoryQuestions(requirements, role, research, category, nextId);
+    const questions = await generateCategoryQuestions(
+      requirements,
+      role,
+      research,
+      category,
+      nextId,
+      warnings,
+    );
     nextId += questions.length;
     allQuestions.push(...questions);
   }
@@ -171,9 +205,10 @@ export async function generateQuestions(requirements, role, research, startId = 
  * @param {object}   role
  * @param {object}   research
  * @param {number}   startId          Next available question ID number
+ * @param {string[]} [warnings]       Kit warnings array — a failed pass is recorded here
  * @returns {Promise<object[]>}
  */
-export async function generateGapQuestions(gapRequirements, role, research, startId) {
+export async function generateGapQuestions(gapRequirements, role, research, startId, warnings = null) {
   if (!gapRequirements.length) return [];
 
   // Group by kind to maintain per-category calling discipline
@@ -208,6 +243,10 @@ export async function generateGapQuestions(gapRequirements, role, research, star
       allQuestions.push(...questions);
     } catch (err) {
       console.warn(`[gap-questions] failed for category ${category}:`, err.message);
+      pushWarning(
+        warnings,
+        `gap_questions_failed: could not fill ${reqs.length} uncovered must-have requirement(s) (${err.message})`,
+      );
     }
   }
 

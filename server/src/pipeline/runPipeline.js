@@ -102,6 +102,7 @@ export async function runPipeline(input, { onProgress = () => {} } = {}) {
       extracted,
       research,
       1,
+      warnings,
     );
     progress('questions', 'done', `${questions.length} questions generated`);
 
@@ -117,7 +118,7 @@ export async function runPipeline(input, { onProgress = () => {} } = {}) {
       if (!gapReqs.length) break; // only nice-to-haves uncovered — stop
 
       const nextId = questions.length + 1;
-      const gapQuestions = await generateGapQuestions(gapReqs, extracted, research, nextId);
+      const gapQuestions = await generateGapQuestions(gapReqs, extracted, research, nextId, warnings);
       questions = [...questions, ...gapQuestions];
 
       // Re-check coverage (pure code — not LLM)
@@ -126,9 +127,20 @@ export async function runPipeline(input, { onProgress = () => {} } = {}) {
     }
     progress('coverage', 'done', `${passes} pass(es), ${uncovered.length} uncovered`);
 
+    // An uncovered must-have is the one failure this whole loop exists to catch.
+    // We still ship the kit (the user can add a question by hand), but never silently.
+    const uncoveredMust = extracted.requirements.filter(
+      (r) => r.priority === 'must' && uncovered.includes(r.id),
+    );
+    if (uncoveredMust.length) {
+      warnings.push(
+        `uncovered_must_haves: ${uncoveredMust.length} must-have requirement(s) still have no question after ${passes} pass(es): ${uncoveredMust.map((r) => `${r.id} (${r.text})`).join('; ')}`,
+      );
+    }
+
     // ── 7. FLASHCARDS ──────────────────────────────────────────────────────
     progress('flashcards', 'running');
-    const flashcards = await generateFlashcards(extracted.requirements, questions, 1);
+    const flashcards = await generateFlashcards(extracted.requirements, questions, 1, warnings);
     progress('flashcards', 'done', `${flashcards.length} flashcards`);
 
     // ── 8. SCHEDULE (pure arithmetic) ─────────────────────────────────────

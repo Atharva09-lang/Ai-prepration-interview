@@ -218,7 +218,17 @@ the candidate shapes the kit rather than just reading it.
   category-specific quality and clean coverage reasoning. Trade-off: more calls means
   more exposure to provider rate limits.
 - **Deterministic steps in code** — coverage and scheduling are pure functions, so they
-  are testable, reproducible, and never hallucinate. 59 tests lock this behaviour in.
+  are testable, reproducible, and never hallucinate. 65 tests lock this behaviour in.
+- **Partial failures are visible, never silent** — a question category, a gap-fill pass or
+  the flashcard step that fails is recorded in the kit's `warnings` (`questions_failed:`,
+  `gap_questions_failed:`, `flashcards_failed:`, `flashcards_empty:`), and any must-have
+  still uncovered after the last pass is written as `uncovered_must_haves:`. The kit page
+  renders these plus `coverage.uncovered_requirement_ids` and `research.pages_failed`, so a
+  thin kit says *why* it is thin instead of looking complete.
+- **No fabricated placeholder content** — a failed flashcard step produces an empty section
+  with a warning rather than auto-generated filler cards that would read as real content.
+  Likewise, regenerating a section that returns nothing raises an error and leaves the kit
+  untouched, instead of replacing a section with an empty list.
 - **Job-based generation** — long pipelines don't block an HTTP request; the client
   polls and shows real stage progress. Trade-off: more moving parts (Job collection).
 - **Soft deletes + provenance** — tombstones and `origin`/`pinned` make regeneration

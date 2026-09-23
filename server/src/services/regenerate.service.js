@@ -92,9 +92,20 @@ async function regenerateQuestionCategory(kit, category) {
   // system-design / company-fit questions.
   const newQuestions = await generateCategoryQuestions(requirements, kit.role, research, category, nextId);
 
+  const survivors = survivingQuestions.filter((q) => !q.deleted);
+  // A regeneration that returns nothing would silently empty the section.
+  // Fail loudly instead of applying an empty replacement.
+  if (!newQuestions.length) {
+    throw new AppError(
+      'GENERATION_EMPTY',
+      `No ${category} questions could be generated — nothing was changed`,
+      502,
+    );
+  }
+
   const merged = [
-    ...survivingQuestions.filter((q) => !q.deleted),
-    ...newQuestions.map((q, i) => ({ ...q, origin: 'generated', pinned: false, deleted: false, order: survivingQuestions.length + i })),
+    ...survivors,
+    ...newQuestions.map((q, i) => ({ ...q, origin: 'generated', pinned: false, deleted: false, order: survivors.length + i })),
   ];
 
 
@@ -125,9 +136,18 @@ async function regenerateFlashcardsSection(kit) {
   const activeQuestions = kit.questions.filter((q) => !q.deleted);
   const newFlashcards = await generateFlashcards(requirements, activeQuestions, maxId + 1);
 
+  const survivors = surviving.filter((f) => !f.deleted);
+  if (!newFlashcards.length) {
+    throw new AppError(
+      'GENERATION_EMPTY',
+      'No flashcards could be generated — nothing was changed',
+      502,
+    );
+  }
+
   const merged = [
-    ...surviving.filter((f) => !f.deleted),
-    ...newFlashcards.map((f, i) => ({ ...f, origin: 'generated', pinned: false, deleted: false, order: surviving.length + i })),
+    ...survivors,
+    ...newFlashcards.map((f, i) => ({ ...f, origin: 'generated', pinned: false, deleted: false, order: survivors.length + i })),
   ];
 
   await Kit.updateOne({ _id: kit._id }, { $set: { flashcards: merged } });

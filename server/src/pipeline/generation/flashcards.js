@@ -6,6 +6,10 @@ import { generateStructured } from '../../llm/client.js';
 import { buildFlashcardsPrompt } from '../../llm/prompts/flashcards.js';
 import { filterValidRequirementIds } from '../coverage.js';
 
+function pushWarning(warnings, message) {
+  if (Array.isArray(warnings)) warnings.push(message);
+}
+
 /**
  * Turns raw LLM output into schema-safe flashcards.
  *
@@ -42,24 +46,30 @@ export function normalizeFlashcards(rawList, validRequirements, startId) {
  * @param {object[]} requirements
  * @param {object[]} questions
  * @param {number}   [startId=1]  Starting numeric suffix for flashcard IDs
+ * @param {string[]} [warnings]   Kit warnings array — a failed/empty section is recorded here
  * @returns {Promise<object[]>}
  */
-export async function generateFlashcards(requirements, questions, startId = 1) {
+export async function generateFlashcards(requirements, questions, startId = 1, warnings = null) {
   if (!requirements.length) return [];
 
   const prompt = buildFlashcardsPrompt({ requirements, questions });
 
   try {
     const result = await generateStructured({ type: 'flashcards', prompt, useMock: false });
-    return normalizeFlashcards(result.flashcards ?? [], requirements, startId);
+    const cards = normalizeFlashcards(result.flashcards ?? [], requirements, startId);
+    if (!cards.length) {
+      pushWarning(warnings, 'flashcards_empty: no usable flashcards were generated');
+    }
+    return cards;
   } catch (err) {
     console.warn('[flashcards] generation failed:', err.message);
-    // Return minimal flashcards so the kit still passes validation
-    return requirements.slice(0, 3).map((r, i) => ({
-      id: `f${startId + i}`,
-      front: `What is "${r.text}"?`,
-      back: 'Review the job description and your preparation notes.',
-      requirement_ids: [r.id],
-    }));
+    // Fabricated placeholder cards would look like real content, so an empty
+    // section plus a recorded warning is the honest outcome. The kit schema
+    // allows zero flashcards, so this does not invalidate the kit.
+    pushWarning(
+      warnings,
+      `flashcards_failed: flashcards could not be generated (${err.message})`,
+    );
+    return [];
   }
 }

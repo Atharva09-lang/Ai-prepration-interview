@@ -306,6 +306,7 @@ export default function KitDetailPage() {
 
   const company = kit.source?.company || hostnameOf(kit.input?.company_url);
   const requirements = kit.role?.requirements ?? [];
+  const uncoveredIds = new Set(kit.coverage?.uncovered_requirement_ids ?? []);
 
   return (
     <AppShell wide>
@@ -368,12 +369,9 @@ export default function KitDetailPage() {
                 {actionError}
               </div>
             )}
-            {kit.warnings?.length > 0 && (
-              <div className="mt-4 rounded-md border border-warning/30 bg-warning/5 px-3.5 py-2.5 text-sm text-warning">
-                <strong className="font-semibold">Heads up:</strong> {kit.warnings[0]}
-              </div>
-            )}
           </header>
+
+          <KitHealth kit={kit} requirements={requirements} onRegenerate={() => setRegenOpen(true)} />
 
           
           <Section
@@ -489,6 +487,11 @@ export default function KitDetailPage() {
                         <p className="mt-0.5 text-xs text-muted">
                           {r.kind} · {r.priority === 'must' ? 'Must have' : 'Nice to have'}
                         </p>
+                        {uncoveredIds.has(r.id) && (
+                          <Badge tone={r.priority === 'must' ? 'danger' : 'outline'} className="mt-1.5">
+                            No question yet
+                          </Badge>
+                        )}
                       </div>
                     </li>
                   ))}
@@ -664,6 +667,77 @@ export default function KitDetailPage() {
 
 
     </AppShell>
+  );
+}
+
+/**
+ * Honest reporting of what the pipeline could and could not produce:
+ * uncovered must-haves, empty/failed sections, and unretrievable sources.
+ * A kit that hides its gaps looks identical to a complete one — so it doesn't.
+ */
+function KitHealth({ kit, requirements, onRegenerate }) {
+  const uncoveredIds = kit.coverage?.uncovered_requirement_ids ?? [];
+  const mustUncovered = requirements.filter(
+    (r) => r.priority === 'must' && uncoveredIds.includes(r.id),
+  );
+  const warnings = kit.warnings ?? [];
+  const failedSources = kit.research?.pages_failed ?? [];
+
+  if (!mustUncovered.length && !warnings.length && !failedSources.length) return null;
+
+  return (
+    <div className="space-y-3">
+      {mustUncovered.length > 0 && (
+        <div role="alert" className="rounded-xl border border-danger/30 bg-danger/5 p-4 text-sm text-danger">
+          <p className="font-semibold">
+            {mustUncovered.length} must-have requirement{mustUncovered.length === 1 ? '' : 's'} still
+            {mustUncovered.length === 1 ? ' has' : ' have'} no question
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {mustUncovered.map((r) => (
+              <li key={r.id}>{r.text}</li>
+            ))}
+          </ul>
+          <p className="mt-2">
+            Add a question by hand, or regenerate the question category these belong to.
+          </p>
+          <Button size="sm" variant="outline" className="mt-3" onClick={onRegenerate}>
+            Regenerate a section
+          </Button>
+        </div>
+      )}
+
+      {warnings.length > 0 && (
+        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 text-sm text-warning">
+          <p className="font-semibold">
+            Partial results — {warnings.length} warning{warnings.length === 1 ? '' : 's'}
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {warnings.map((w, i) => (
+              <li key={`${i}-${w.slice(0, 24)}`} className="break-words">{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {failedSources.length > 0 && (
+        <div className="rounded-xl border border-border bg-surface p-4 text-sm text-muted">
+          <p className="font-semibold text-ink">
+            {failedSources.length} source{failedSources.length === 1 ? '' : 's'} could not be retrieved
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {failedSources.slice(0, 8).map((p, i) => (
+              <li key={`${i}-${p.url ?? ''}`}>
+                <Badge tone="outline" title={p.reason ?? ''}>{hostnameOf(p.url) || p.url}</Badge>
+              </li>
+            ))}
+            {failedSources.length > 8 && (
+              <li className="self-center text-xs">+{failedSources.length - 8} more</li>
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 
