@@ -55,11 +55,10 @@ export default function KitDetailPage() {
   const [busySection, setBusySection] = useState(null);
   const [regenOpen, setRegenOpen] = useState(false);
   const [actionError, setActionError] = useState(null);
-  const [addState, setAddState] = useState(null); // { type: 'question'|'flashcard', category? }
+  const [addState, setAddState] = useState(null); 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
-
   
   const generating = kit?.status === 'generating';
   const jobId = generating ? job?.id ?? null : null;
@@ -152,7 +151,7 @@ export default function KitDetailPage() {
     [id, setKit],
   );
 
-  const confirmDeleteKit = useCallback(async () => {
+    const confirmDeleteKit = useCallback(async () => {
     setDeleting(true);
     setDeleteError(null);
     try {
@@ -164,11 +163,7 @@ export default function KitDetailPage() {
     }
   }, [id, router]);
 
-  /**
-   * Reorder questions within one category. Global `order` values are preserved
-   * by remapping the category's items onto the exact slots they already occupy,
-   * so other categories are untouched. Only changed items are persisted.
-   */
+
   const reorderQuestions = useCallback(
     async (category, orderedIds) => {
       const active = kit.questions.filter((q) => !q.deleted);
@@ -387,7 +382,7 @@ export default function KitDetailPage() {
             description="What the company does and how they hire."
             onRegenerate={() => regenerate('brief')}
             regenerating={busySection === 'brief'}
-            action={
+             action={
               <Button
                 variant={kit.company_brief?.pinned ? 'primary' : 'outline'}
                 size="sm"
@@ -557,12 +552,12 @@ export default function KitDetailPage() {
                   >
                     <div className="rounded-lg border border-border bg-card p-4 shadow-soft">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-primary">
+                         <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-primary">
                           Front
                           {f.pinned && <Badge tone="outline">Pinned</Badge>}
                         </p>
                         {editMode && (
-                          <div className="flex items-center gap-0.5">
+                           <div className="flex items-center gap-0.5">
                             <button
                               type="button"
                               onClick={() => editFlashcard(f.id, { pinned: !f.pinned })}
@@ -575,7 +570,7 @@ export default function KitDetailPage() {
                                 <path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z" />
                               </svg>
                             </button>
-                            <button
+                          <button
                               type="button"
                               onClick={() => deleteFlashcard(f.id)}
                               aria-label="Delete flashcard"
@@ -643,7 +638,7 @@ export default function KitDetailPage() {
         addQuestion={(payload) => api.addQuestion(id, payload)}
         addFlashcard={(payload) => api.addFlashcard(id, payload)}
       />
-
+      
       <Modal
         open={deleteOpen}
         onClose={() => !deleting && setDeleteOpen(false)}
@@ -666,6 +661,8 @@ export default function KitDetailPage() {
           </div>
         )}
       </Modal>
+
+
     </AppShell>
   );
 }
