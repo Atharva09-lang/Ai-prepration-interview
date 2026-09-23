@@ -81,3 +81,32 @@ export function greeting() {
   if (h < 18) return 'Good afternoon';
   return 'Good evening';
 }
+
+/**
+ * Consecutive days with at least one flashcard review, ending today or
+ * yesterday. Day keys are UTC `YYYY-MM-DD` strings, matching the ones the API
+ * sends in each kit's `progress.practice_days`.
+ */
+export function practiceStreak(kits) {
+  const days = new Set();
+  for (const kit of kits ?? []) {
+    for (const day of kit.progress?.practice_days ?? []) days.add(day);
+  }
+  if (days.size === 0) return 0;
+
+  const DAY = 86400000;
+  const key = (ms) => new Date(ms).toISOString().slice(0, 10);
+
+  let cursor = Date.now();
+  if (!days.has(key(cursor))) {
+    cursor -= DAY; // a streak stays alive until the end of the day after the last review
+    if (!days.has(key(cursor))) return 0;
+  }
+
+  let streak = 0;
+  while (days.has(key(cursor))) {
+    streak += 1;
+    cursor -= DAY;
+  }
+  return streak;
+}

@@ -106,6 +106,45 @@ export async function setDayCompletion(userId, kitId, day, completed) {
 }
 
 /**
+ * Derives the practice progress of one kit from its flashcards and practice
+ * map. The kit list and dashboard need the numbers, not the whole map.
+ *
+ * A session counts as complete once every active card has a confidence
+ * rating — the same condition the practice screen calls "Session complete".
+ *
+ * @param {object} kit  Kit document or plain object with flashcards + practice
+ * @returns {{ cards_total: number, cards_seen: number, cards_rated: number,
+ *            practice_complete: boolean, practice_days: string[] }}
+ */
+export function summarizePractice(kit) {
+  const practice = kit?.practice;
+  const entryFor = (id) =>
+    typeof practice?.get === 'function' ? practice.get(id) : practice?.[id];
+  const entries =
+    typeof practice?.values === 'function' ? [...practice.values()] : Object.values(practice ?? {});
+
+  const cards = (kit?.flashcards ?? []).filter((f) => !f.deleted);
+  const seen = cards.filter((f) => (entryFor(f.id)?.seen_count ?? 0) > 0).length;
+  const rated = cards.filter((f) => entryFor(f.id)?.confidence != null).length;
+
+  // Distinct UTC days with at least one review — feeds the dashboard streak.
+  const days = new Set();
+  for (const entry of entries) {
+    if (entry?.last_reviewed_at) {
+      days.add(new Date(entry.last_reviewed_at).toISOString().slice(0, 10));
+    }
+  }
+
+  return {
+    cards_total: cards.length,
+    cards_seen: seen,
+    cards_rated: rated,
+    practice_complete: cards.length > 0 && rated === cards.length,
+    practice_days: [...days].sort(),
+  };
+}
+
+/**
  * Returns the flashcard IDs in practice session order.
  *
  * Ordering:

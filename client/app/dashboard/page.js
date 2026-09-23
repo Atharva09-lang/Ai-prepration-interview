@@ -9,7 +9,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { SkeletonCard } from '@/components/LoadingState';
 import { buttonClasses } from '@/components/Button';
 import { useKits } from '@/hooks/useKits';
-import { greeting } from '@/lib/utils';
+import { greeting, practiceStreak } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { kits, loading, error, refetch } = useKits();
@@ -17,6 +17,9 @@ export default function DashboardPage() {
   const total = kits.length;
   const ready = kits.filter((k) => k.status === 'ready').length;
   const generating = kits.filter((k) => k.status === 'generating').length;
+  // A session is complete once every flashcard in that kit has been rated.
+  const completedSessions = kits.filter((k) => k.progress?.practice_complete).length;
+  const streak = practiceStreak(kits);
   const recent = [...kits].slice(0, 6);
 
   return (
@@ -42,19 +45,19 @@ export default function DashboardPage() {
           <StatCard
             label="Active Preparation"
             value={loading ? '—' : ready}
-            hint="Ready to study"
+            hint={generating ? `${generating} generating now` : 'Ready to study'}
             icon={<IconBook />}
           />
           <StatCard
             label="Completed Sessions"
-            value="—"
-            hint="Tracked inside each kit"
+            value={loading ? '—' : completedSessions}
+            hint={completedSessions ? 'Decks fully practised' : 'Finish a practice deck to start'}
             icon={<IconCheck />}
           />
           <StatCard
             label="Practice Streak"
-            value="—"
-            hint={generating ? `${generating} generating now` : 'Tracked inside each kit'}
+            value={loading ? '—' : streak}
+            hint={streak ? 'Consecutive days practised' : 'Rate a card to start your streak'}
             icon={<IconFlame />}
           />
         </section>

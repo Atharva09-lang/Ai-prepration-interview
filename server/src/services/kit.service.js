@@ -5,6 +5,7 @@ import { makeDedupeKey } from '../utils/dedupe.js';
 import { assertObjectId } from '../utils/objectId.js';
 import { startGenerationJob } from './jobRunner.js';
 import { serializeJob } from './job.service.js';
+import { summarizePractice } from './practice.service.js';
 
 const latestJob = (kitId) => Job.findOne({ kitId }).sort({ createdAt: -1 });
 
@@ -62,6 +63,11 @@ function toSummary(kit) {
     company_url: kit.input.company_url,
     days: kit.input.days,
     updated_at: kit.updatedAt,
+    progress: {
+      ...summarizePractice(kit),
+      schedule_days: kit.schedule?.days?.length ?? 0,
+      schedule_done: kit.completed_days?.length ?? 0,
+    },
   };
 }
 
@@ -69,7 +75,10 @@ export async function listKits(userId) {
   const kits = await Kit.find({ userId })
     .sort({ updatedAt: -1 })
     .limit(100)
-    .select('status input.company_url input.days source.role source.company updatedAt');
+    .select(
+      'status input.company_url input.days source.role source.company updatedAt ' +
+        'flashcards.id flashcards.deleted practice schedule.days completed_days',
+    );
   return kits.map(toSummary);
 }
 
