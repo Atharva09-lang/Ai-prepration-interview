@@ -253,3 +253,17 @@ bash
 npm test        # from the repo root; delegates to the server suite
 
 65 Vitest tests cover JD and kit validation, requirement-id sanitising, dedupe, coverage, the kit mapper, auth, the Express app, schedule allocation, and that a failed generation step is reported in warnings rather than swallowed.
+
+14. Edge cases and failure handling
+
+Postings from the open web fail in predictable ways. The rule throughout: degrade, record, and never invent. A thin description produces a thin kit that says so, and a company the crawler cannot reach produces an honest brief rather than a fabricated one. Every failure below is visible in the kit's warnings, in research.pages_failed, or on the kit page itself.
+
+Case	What the app does	Where it shows
+Company URL invalid, 404s or times out	The page fetch failure is recorded with its reason and research stops there; the kit is still generated from the pasted description alone	research.pages_failed, and the kit page's "sources could not be retrieved" list
+Site has no discoverable hiring or about page	Links are ranked by hiring keywords but nothing relevant is found, so the brief is written from the homepage text only	research.hiring_page_found: false
+Two-line stub description	Descriptions under 150 characters are flagged before extraction, and few or no requirements are extracted rather than invented	thin_jd warning
+Public discussion turns up nothing	Skipped entirely; a miss is never fatal	research.discussion_found: false
+Model returns invalid JSON or an incomplete kit	Unparseable JSON is retried, then salvaged from a code fence; invented requirement ids are filtered, blank items dropped, ids reassigned; the assembled kit is validated against the Appendix A schema before saving	Validation failures mark the kit failed instead of saving it half-built; dropped items surface as warnings
+Provider rate-limits or briefly fails	5 retries with exponential backoff (capped at 60s), honouring retry-after and the provider's retryDelay; a failed question category, gap pass or flashcard step is recorded and the run continues	questions_failed, gap_questions_failed, flashcards_failed, flashcards_empty warnings
+Same description and company submitted twice	A dedupe key (hash of JD + URL + days) is unique per user, so the second submission reuses the existing kit instead of paying for a second run; a failed kit is restarted instead	The generate page opens the existing kit directly
+1-day or 60-day schedule	Requested days are clamped to [1, 365] and allocation always emits exactly that many days; surplus days become "Review and rest" instead of being dropped	Schedule section (days_available always equals the requested days)
