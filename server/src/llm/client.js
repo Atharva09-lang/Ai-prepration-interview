@@ -13,6 +13,8 @@ const MAX_DELAY_MS = 60_000;
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
+// Tolerate the forms people paste from the model-list API: surrounding
+// whitespace and a leading `models/` prefix.
 const GEMINI_MODEL = (process.env.GEMINI_MODEL || 'gemini-3-flash-preview')
   .trim()
   .replace(/^models\//, '');

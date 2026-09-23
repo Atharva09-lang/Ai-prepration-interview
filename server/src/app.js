@@ -19,9 +19,10 @@ export function createApp({ sessionStore } = {}) {
   app.use(helmet());
 
   const allowedOrigins = [
+    env.CLIENT_ORIGIN,
     'http://localhost:3000',
     'https://ai-prepration-interview.vercel.app',
-  ];
+  ].filter(Boolean);
 
   app.use(
     cors({

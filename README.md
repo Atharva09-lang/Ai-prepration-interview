@@ -65,7 +65,8 @@ Open <http://localhost:3000>, register, and create a kit.
 | `SESSION_SECRET` | Session signing secret (≥ 32 chars) | — |
 | `GEMINI_API_KEY` | Gemini key — required for real generation | — |
 | `GEMINI_MODEL` | Override the model name | `gemini-3-flash-preview` |
-| `NEXT_PUBLIC_API_URL` | (client) API base URL | `http://localhost:4000` |
+| `NEXT_PUBLIC_API_URL` | (client, dev) API base URL | `http://localhost:4000` |
+| `API_PROXY_TARGET` | (client, prod) origin that `/api/*` is proxied to | Render URL |
 
 ---
 
