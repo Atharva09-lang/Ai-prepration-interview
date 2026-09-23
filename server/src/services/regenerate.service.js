@@ -1,24 +1,9 @@
-/**
- * services/regenerate.service.js
- *
- * Regenerates a single section of an existing kit without touching:
- *  - Items the user wrote by hand  (origin === 'user')
- *  - Items the user explicitly pinned  (pinned === true)
- *  - Items soft-deleted by the user  (deleted === true → tombstones)
- *
- * Supported sections:
- *  'brief'      — regenerates company_brief only
- *  'technical'  | 'behavioural' | 'system-design' | 'company-fit'
- *               — regenerates questions of that category
- *  'flashcards' — regenerates all flashcards
- *  'schedule'   — rebuilds the schedule from current questions
- */
 
 import { Kit } from '../models/Kit.js';
 import { AppError } from '../utils/AppError.js';
 import { assertObjectId } from '../utils/objectId.js';
 import { generateBrief } from '../pipeline/generation/brief.js';
-import { generateQuestions, generateGapQuestions } from '../pipeline/generation/questions.js';
+import { generateCategoryQuestions } from '../pipeline/generation/questions.js';
 import { generateFlashcards } from '../pipeline/generation/flashcards.js';
 import { buildSchedule } from '../pipeline/schedule.js';
 import { runResearch } from '../pipeline/research/index.js';
@@ -63,14 +48,13 @@ export async function regenerateSection(userId, kitId, section) {
   throw new AppError('INVALID_SECTION', `Unknown section: ${section}`, 400);
 }
 
-// ─── Brief ───────────────────────────────────────────────────────────────────
+
 
 async function regenerateBrief(kit) {
   if (kit.company_brief?.pinned) {
     throw new AppError('SECTION_PINNED', 'Company brief is pinned and cannot be regenerated', 409);
   }
 
-  // Re-run research to get fresh context (or use cached pages_used)
   let research;
   try {
     research = await runResearch(kit.input.company_url);
@@ -88,41 +72,35 @@ async function regenerateBrief(kit) {
   return (await Kit.findById(kit._id)).toJSON();
 }
 
-// ─── Questions (one category) ─────────────────────────────────────────────────
 
 async function regenerateQuestionCategory(kit, category) {
   const { requirements } = kit.role;
 
-  // Keep pinned, user-authored, and deleted (tombstone) items
+  
   const survivingQuestions = kit.questions.filter(
-    (q) => q.category !== category || q.pinned || q.origin === 'user' || q.deleted,
+    (q) => q.category !== category || q.pinned || q.origin === 'user' || q.origin === 'edited' || q.deleted,
   );
 
-  // Start new IDs after the highest existing ID
+
   const maxId = kit.questions.reduce((max, q) => Math.max(max, Number(q.id.slice(1)) || 0), 0);
   const nextId = maxId + 1;
 
-  const reqs = requirements.filter((r) => {
-    if (category === 'technical') return r.kind === 'technical';
-    if (category === 'behavioural') return r.kind === 'behavioural' || r.kind === 'domain';
-    if (category === 'system-design') return r.kind === 'technical';
-    return true; // company-fit gets all
-  });
+  
 
   const research = buildResearchContext(kit);
-  const newQuestions = await generateQuestions(reqs, kit.role, research, nextId);
+  const newQuestions = await generateCategoryQuestions(requirements, kit.role, research, category, nextId);
 
-  // Only keep new questions for this category (not pinned/user — those stayed above)
+  
   const merged = [
     ...survivingQuestions.filter((q) => !q.deleted),
     ...newQuestions.map((q, i) => ({ ...q, origin: 'generated', pinned: false, deleted: false, order: survivingQuestions.length + i })),
   ];
 
-  // Rebuild schedule to reflect new question set
+
   const activeQuestions = merged.filter((q) => !q.deleted);
   const schedule = buildSchedule(activeQuestions, requirements, kit.input.days);
 
-  // Recompute coverage
+  
   const uncovered = findUncoveredRequirements(requirements, activeQuestions);
   const coverage = { uncovered_requirement_ids: uncovered, passes: (kit.coverage?.passes ?? 1) };
 
@@ -134,13 +112,13 @@ async function regenerateQuestionCategory(kit, category) {
   return (await Kit.findById(kit._id)).toJSON();
 }
 
-// ─── Flashcards ───────────────────────────────────────────────────────────────
+
 
 async function regenerateFlashcardsSection(kit) {
   const { requirements } = kit.role;
 
-  // Keep pinned and user flashcards
-  const surviving = kit.flashcards.filter((f) => f.pinned || f.origin === 'user' || f.deleted);
+  
+  const surviving = kit.flashcards.filter((f) => f.pinned || f.origin === 'user' || f.origin === 'edited' || f.deleted);
   const maxId = kit.flashcards.reduce((max, f) => Math.max(max, Number(f.id.slice(1)) || 0), 0);
 
   const activeQuestions = kit.questions.filter((q) => !q.deleted);
@@ -155,7 +133,7 @@ async function regenerateFlashcardsSection(kit) {
   return (await Kit.findById(kit._id)).toJSON();
 }
 
-// ─── Schedule ─────────────────────────────────────────────────────────────────
+ 
 
 async function regenerateScheduleSection(kit) {
   const { requirements } = kit.role;
@@ -166,7 +144,7 @@ async function regenerateScheduleSection(kit) {
   return (await Kit.findById(kit._id)).toJSON();
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 
 function buildResearchContext(kit) {
   return {

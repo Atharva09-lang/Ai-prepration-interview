@@ -365,6 +365,17 @@ export default function KitDetailPage() {
             description="What the company does and how they hire."
             onRegenerate={() => regenerate('brief')}
             regenerating={busySection === 'brief'}
+             action={
+              <Button
+                variant={kit.company_brief?.pinned ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => patchBrief('pinned', !kit.company_brief?.pinned)}
+                aria-pressed={!!kit.company_brief?.pinned}
+                title={kit.company_brief?.pinned ? 'Unpin — allow regeneration to replace it' : 'Pin — keep it through regeneration'}
+              >
+                {kit.company_brief?.pinned ? 'Pinned' : 'Pin'}
+              </Button>
+            }
           >
             <div className="space-y-4">
               <div>
@@ -524,18 +535,35 @@ export default function KitDetailPage() {
                   >
                     <div className="rounded-lg border border-border bg-card p-4 shadow-soft">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs font-medium uppercase tracking-wide text-primary">Front</p>
+                         <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-primary">
+                          Front
+                          {f.pinned && <Badge tone="outline">Pinned</Badge>}
+                        </p>
                         {editMode && (
+                           <div className="flex items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => editFlashcard(f.id, { pinned: !f.pinned })}
+                              aria-pressed={!!f.pinned}
+                              aria-label={f.pinned ? 'Unpin flashcard' : 'Pin flashcard'}
+                              title={f.pinned ? 'Unpin — allow regeneration to replace it' : 'Pin — keep it through regeneration'}
+                              className={`rounded-md p-1 transition-colors hover:bg-surface ${f.pinned ? 'text-primary' : 'text-muted hover:text-ink'}`}
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill={f.pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z" />
+                              </svg>
+                            </button>
                           <button
-                            type="button"
-                            onClick={() => deleteFlashcard(f.id)}
-                            aria-label="Delete flashcard"
-                            className="rounded-md p-1 text-muted transition-colors hover:bg-danger/10 hover:text-danger"
-                          >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                              <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
-                            </svg>
-                          </button>
+                              type="button"
+                              onClick={() => deleteFlashcard(f.id)}
+                              aria-label="Delete flashcard"
+                              className="rounded-md p-1 text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+                              </svg>
+                            </button>
+                          </div>
                         )}
                       </div>
                       <EditableText label="Flashcard front" multiline value={f.front} onSave={(v) => editFlashcard(f.id, { front: v })} />

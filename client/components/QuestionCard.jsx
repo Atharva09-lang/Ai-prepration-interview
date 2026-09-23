@@ -7,11 +7,7 @@ import { cn, CATEGORY_LABEL, DIFFICULTY_LABEL } from '@/lib/utils';
 
 const DIFFICULTY_TONE = { 1: 'success', 2: 'warning', 3: 'accent' };
 
-/**
- * One interview question with inline editing, difficulty control, related
- * requirements, delete, and keyboard-friendly reorder buttons. The parent
- * renders this inside a framer-motion Reorder.Item for drag-and-drop.
- */
+
 export function QuestionCard({
   question,
   requirements = [],
@@ -122,6 +118,21 @@ export function QuestionCard({
         </div>
 
         <div className="flex shrink-0 flex-col items-center gap-1">
+          <button
+            type="button"
+               onClick={() => onEdit?.({ pinned: !question.pinned })}
+            aria-pressed={!!question.pinned}
+            aria-label={question.pinned ? 'Unpin question' : 'Pin question'}
+            title={question.pinned ? 'Unpin — allow regeneration to replace it' : 'Pin — keep it through regeneration'}
+            className={cn(
+              'rounded-md p-1 transition-colors hover:bg-surface',
+              question.pinned ? 'text-primary' : 'text-muted hover:text-ink',
+            )}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill={question.pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z" />
+            </svg>
+          </button>
           <button
             type="button"
             onClick={() => onMove?.(-1)}
