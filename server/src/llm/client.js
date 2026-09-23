@@ -13,7 +13,9 @@ const MAX_DELAY_MS = 60_000;
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
+const GEMINI_MODEL = (process.env.GEMINI_MODEL || 'gemini-3-flash-preview')
+  .trim()
+  .replace(/^models\//, '');
 
 function isRetryableStatus(status) {
   return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
