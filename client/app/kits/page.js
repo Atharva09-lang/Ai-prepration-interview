@@ -28,8 +28,10 @@ export default function KitsPage() {
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  
 
-  async function confirmDelete() {
+
+    async function confirmDelete() {
     if (!pendingDelete) return;
     setDeleting(true);
     setDeleteError(null);
@@ -43,6 +45,7 @@ export default function KitsPage() {
       setDeleting(false);
     }
   }
+
 
   const visible = useMemo(() => {
     const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
@@ -156,7 +159,7 @@ export default function KitsPage() {
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visible.map((kit, i) => (
-              <KitCard
+               <KitCard
                 key={kit.id}
                 kit={kit}
                 index={i}
@@ -168,7 +171,8 @@ export default function KitsPage() {
         )}
       </div>
 
-      <Modal
+
+            <Modal
         open={Boolean(pendingDelete)}
         onClose={() => !deleting && setPendingDelete(null)}
         title="Delete this kit?"
@@ -194,6 +198,7 @@ export default function KitsPage() {
           </div>
         )}
       </Modal>
+
     </AppShell>
   );
 }

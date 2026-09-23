@@ -6,11 +6,7 @@ import { Card } from './Card';
 import { StatusBadge } from './StatusBadge';
 import { relativeTime, hostnameOf } from '@/lib/utils';
 
-/**
- * A kit summary card used on the dashboard and My Kits pages.
- * The card body is a link to the kit workspace; the optional delete button sits
- * outside that link (absolutely positioned) so we never nest a <button> in an <a>.
- */
+
 export function KitCard({ kit, index = 0, onDelete, deleting = false }) {
   const company = kit.company || hostnameOf(kit.company_url);
   return (
@@ -18,7 +14,7 @@ export function KitCard({ kit, index = 0, onDelete, deleting = false }) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.3) }}
-      className="relative h-full"
+      className="h-full"
     >
       <Link href={`/kits/${kit.id}`} className="block h-full">
         <Card interactive className="flex h-full flex-col p-5">
@@ -46,7 +42,7 @@ export function KitCard({ kit, index = 0, onDelete, deleting = false }) {
         </Card>
       </Link>
 
-      {onDelete && (
+       {onDelete && (
         <button
           type="button"
           onClick={() => onDelete(kit)}
