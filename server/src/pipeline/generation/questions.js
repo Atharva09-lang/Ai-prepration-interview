@@ -11,13 +11,25 @@
 import { generateStructured } from '../../llm/client.js';
 import { buildCategoryQuestionsPrompt } from '../../llm/prompts/question.js';
 import { filterValidRequirementIds } from '../coverage.js';
-const CATEGORIES = ['technical', 'behavioural', 'system-design', 'company-fit'];
 
+const CATEGORIES = ['technical', 'behavioural', 'system-design', 'company-fit'];
 
 const validDifficulty = (d) => (Number.isInteger(d) && d >= 1 && d <= 3 ? d : 2);
 
-
 /**
+ * Turns raw LLM output into schema-safe question objects.
+ *
+ * The model is untrusted: it can emit requirement ids that do not exist, an
+ * empty id list, or a blank prompt/answer_outline. Any of those would make the
+ * finished kit fail structural validation (INVALID_KIT) and be marked failed.
+ * Instead we repair what we can and drop what we cannot:
+ *  - requirement_ids are filtered to ids that actually exist (de-duplicated)
+ *  - if none remain, fall back to `fallbackRequirementId` when given, else drop
+ *  - items with an empty prompt or answer_outline are dropped
+ *  - ids are reassigned sequentially from `startId` so they stay contiguous
+ *  - category is forced to the one we asked for (never trust the model's)
+ *
+ * Exported for unit testing.
  *
  * @param {object[]} rawList             Raw `questions` array from the model
  * @param {object[]} validRequirements   Requirements whose ids are acceptable
@@ -54,6 +66,7 @@ export function normalizeQuestions(rawList, validRequirements, category, startId
 
   return out;
 }
+
 /**
  * Maps requirement kinds to the categories that should cover them.
  * A requirement may be covered by more than one category.
@@ -89,6 +102,42 @@ function requirementsForCategory(requirements, category) {
 }
 
 /**
+ * Generates questions for a single category in one LLM call.
+ *
+ * Exported separately from `generateQuestions` so callers that only want one
+ * category (e.g. single-section regeneration) do not accidentally pull in the
+ * other categories that `generateQuestions` derives from the requirement kinds.
+ *
+ * @param {object[]} requirements   Full requirement set — used to validate ids
+ * @param {object}   role           { title, seniority, responsibilities }
+ * @param {object}   research       Research result with hiringProcess + discussionSnippets
+ * @param {string}   category       One of CATEGORIES
+ * @param {number}   [startId=1]    Starting numeric suffix for question IDs
+ * @returns {Promise<object[]>}     Questions for this category only
+ */
+export async function generateCategoryQuestions(requirements, role, research, category, startId = 1) {
+  const reqs = requirementsForCategory(requirements, category);
+  if (!reqs.length && category !== 'company-fit') return [];
+
+  const prompt = buildCategoryQuestionsPrompt({
+    category,
+    requirements: reqs,
+    role,
+    research,
+    idPrefix: `q${startId}`,
+  });
+
+  try {
+    const result = await generateStructured({ type: 'questions', prompt, useMock: false });
+    return normalizeQuestions(result.questions ?? [], requirements, category, startId);
+  } catch (err) {
+    // Skip a failed category rather than aborting the whole pipeline
+    console.warn(`[questions] failed to generate ${category} questions:`, err.message);
+    return [];
+  }
+}
+
+/**
  * Generates questions for all relevant categories.
  * Each category is a separate LLM call.
  *
@@ -106,26 +155,9 @@ export async function generateQuestions(requirements, role, research, startId = 
   let nextId = startId;
 
   for (const category of categories) {
-    const reqs = requirementsForCategory(requirements, category);
-    if (!reqs.length && category !== 'company-fit') continue;
-
-    const prompt = buildCategoryQuestionsPrompt({
-      category,
-      requirements: reqs,
-      role,
-      research,
-      idPrefix: `q${nextId}`,
-    });
-
-    try {
-      const result = await generateStructured({ type: 'questions', prompt, useMock: false });
-       const questions = normalizeQuestions(result.questions ?? [], requirements, category, nextId);
-      nextId += questions.length;
-      allQuestions.push(...questions);
-    } catch (err) {
-      
-      console.warn(`[questions] failed to generate ${category} questions:`, err.message);
-    }
+    const questions = await generateCategoryQuestions(requirements, role, research, category, nextId);
+    nextId += questions.length;
+    allQuestions.push(...questions);
   }
 
   return allQuestions;
@@ -165,7 +197,7 @@ export async function generateGapQuestions(gapRequirements, role, research, star
 
     try {
       const result = await generateStructured({ type: 'questions', prompt, useMock: false });
-        const questions = normalizeQuestions(
+      const questions = normalizeQuestions(
         result.questions ?? [],
         gapRequirements,
         category,

@@ -30,7 +30,24 @@ export function QuestionCard({
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <Badge tone="primary">{CATEGORY_LABEL[question.category] ?? question.category}</Badge>
+            <label className="inline-flex items-center gap-1 text-xs text-muted">
+              <span className="sr-only">Category</span>
+              <select
+                value={question.category}
+                onChange={(e) => onEdit?.({ category: e.target.value })}
+                className={cn(
+                  'rounded-full border border-primary/20 bg-card px-2 py-0.5',
+                  'text-xs font-medium font-heading text-primary',
+                  'focus:outline-none focus:ring-2 focus:ring-primary/30',
+                )}
+                aria-label="Move question to category"
+                title="Move this question to another category"
+              >
+                {Object.entries(CATEGORY_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
             <label className="inline-flex items-center gap-1 text-xs text-muted">
               <span className="sr-only">Difficulty</span>
               <select
@@ -122,6 +139,21 @@ export function QuestionCard({
         </div>
 
         <div className="flex shrink-0 flex-col items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onEdit?.({ pinned: !question.pinned })}
+            aria-pressed={!!question.pinned}
+            aria-label={question.pinned ? 'Unpin question' : 'Pin question'}
+            title={question.pinned ? 'Unpin — allow regeneration to replace it' : 'Pin — keep it through regeneration'}
+            className={cn(
+              'rounded-md p-1 transition-colors hover:bg-surface',
+              question.pinned ? 'text-primary' : 'text-muted hover:text-ink',
+            )}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill={question.pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z" />
+            </svg>
+          </button>
           <button
             type="button"
             onClick={() => onMove?.(-1)}

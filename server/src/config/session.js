@@ -7,9 +7,13 @@ export const SESSION_COOKIE_NAME = 'sid';
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export const sessionCookieOptions = {
-  httpOnly: true, 
-  secure: isProduction, 
-  sameSite: 'lax',
+  httpOnly: true,
+  secure: isProduction,
+  // In production the frontend and API are typically on different hosts, so the
+  // session cookie is sent on cross-site requests and must be SameSite=None
+  // (which browsers only honour over HTTPS — hence `secure` above). Locally both
+  // run on `localhost`, which is same-site, so `lax` is fine and stricter.
+  sameSite: isProduction ? 'none' : 'lax',
   maxAge: SESSION_TTL_MS,
 };
 

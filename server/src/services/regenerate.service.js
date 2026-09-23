@@ -18,7 +18,7 @@ import { Kit } from '../models/Kit.js';
 import { AppError } from '../utils/AppError.js';
 import { assertObjectId } from '../utils/objectId.js';
 import { generateBrief } from '../pipeline/generation/brief.js';
-import { generateQuestions, generateGapQuestions } from '../pipeline/generation/questions.js';
+import { generateCategoryQuestions } from '../pipeline/generation/questions.js';
 import { generateFlashcards } from '../pipeline/generation/flashcards.js';
 import { buildSchedule } from '../pipeline/schedule.js';
 import { runResearch } from '../pipeline/research/index.js';
@@ -93,26 +93,22 @@ async function regenerateBrief(kit) {
 async function regenerateQuestionCategory(kit, category) {
   const { requirements } = kit.role;
 
-  // Keep pinned, user-authored, and deleted (tombstone) items
+  // Keep items the user touched: hand-authored, edited, or pinned — plus
+  // tombstones so a deleted question can never be resurrected. Only the
+  // AI-generated, untouched questions of THIS category are replaced.
   const survivingQuestions = kit.questions.filter(
-    (q) => q.category !== category || q.pinned || q.origin === 'user' || q.deleted,
+    (q) => q.category !== category || q.pinned || q.origin === 'user' || q.origin === 'edited' || q.deleted,
   );
 
   // Start new IDs after the highest existing ID
   const maxId = kit.questions.reduce((max, q) => Math.max(max, Number(q.id.slice(1)) || 0), 0);
   const nextId = maxId + 1;
 
-  const reqs = requirements.filter((r) => {
-    if (category === 'technical') return r.kind === 'technical';
-    if (category === 'behavioural') return r.kind === 'behavioural' || r.kind === 'domain';
-    if (category === 'system-design') return r.kind === 'technical';
-    return true; // company-fit gets all
-  });
-
   const research = buildResearchContext(kit);
-  const newQuestions = await generateQuestions(reqs, kit.role, research, nextId);
+  // Single-category call — regenerating 'technical' must not also append
+  // system-design / company-fit questions.
+  const newQuestions = await generateCategoryQuestions(requirements, kit.role, research, category, nextId);
 
-  // Only keep new questions for this category (not pinned/user — those stayed above)
   const merged = [
     ...survivingQuestions.filter((q) => !q.deleted),
     ...newQuestions.map((q, i) => ({ ...q, origin: 'generated', pinned: false, deleted: false, order: survivingQuestions.length + i })),
@@ -139,8 +135,8 @@ async function regenerateQuestionCategory(kit, category) {
 async function regenerateFlashcardsSection(kit) {
   const { requirements } = kit.role;
 
-  // Keep pinned and user flashcards
-  const surviving = kit.flashcards.filter((f) => f.pinned || f.origin === 'user' || f.deleted);
+  // Keep pinned, user-authored, and hand-edited flashcards (plus tombstones)
+  const surviving = kit.flashcards.filter((f) => f.pinned || f.origin === 'user' || f.origin === 'edited' || f.deleted);
   const maxId = kit.flashcards.reduce((max, f) => Math.max(max, Number(f.id.slice(1)) || 0), 0);
 
   const activeQuestions = kit.questions.filter((q) => !q.deleted);

@@ -8,8 +8,10 @@ import { Input } from '@/components/Input';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { SkeletonCard } from '@/components/LoadingState';
-import { buttonClasses } from '@/components/Button';
+import { Button, buttonClasses } from '@/components/Button';
+import { Modal } from '@/components/Modal';
 import { useKits } from '@/hooks/useKits';
+import { api } from '@/lib/api';
 import { cn, hostnameOf } from '@/lib/utils';
 
 const FILTERS = [
@@ -23,6 +25,24 @@ export default function KitsPage() {
   const { kits, loading, error, refetch } = useKits();
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.deleteKit(pendingDelete.id);
+      setPendingDelete(null);
+      await refetch();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Could not delete the kit.');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const visible = useMemo(() => {
     const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
@@ -136,11 +156,44 @@ export default function KitsPage() {
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visible.map((kit, i) => (
-              <KitCard key={kit.id} kit={kit} index={i} />
+              <KitCard
+                key={kit.id}
+                kit={kit}
+                index={i}
+                onDelete={setPendingDelete}
+                deleting={deleting && pendingDelete?.id === kit.id}
+              />
             ))}
           </ul>
         )}
       </div>
+
+      <Modal
+        open={Boolean(pendingDelete)}
+        onClose={() => !deleting && setPendingDelete(null)}
+        title="Delete this kit?"
+        description={
+          pendingDelete
+            ? `“${pendingDelete.title || 'Untitled role'}” at ${pendingDelete.company || hostnameOf(pendingDelete.company_url)} will be permanently removed. This cannot be undone.`
+            : undefined
+        }
+        footer={
+          <>
+            <Button variant="ghost" size="sm" onClick={() => setPendingDelete(null)} disabled={deleting} type="button">
+              Cancel
+            </Button>
+            <Button variant="danger" size="sm" onClick={confirmDelete} loading={deleting} type="button">
+              Delete kit
+            </Button>
+          </>
+        }
+      >
+        {deleteError && (
+          <div role="alert" className="rounded-md border border-danger/30 bg-danger/5 px-3.5 py-2.5 text-sm text-danger">
+            {deleteError}
+          </div>
+        )}
+      </Modal>
     </AppShell>
   );
 }

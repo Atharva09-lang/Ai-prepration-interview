@@ -21,7 +21,6 @@ ${JSON.stringify(research, null, 2)}
 
 ${UNTRUSTED_CONTENT_RULE}
 
-
 Rules:
 1. Generate questions directly from the requirements.
 2. Every question must reference one or more requirement IDs.
@@ -97,7 +96,6 @@ ${JSON.stringify(requirements, null, 2)}
 RESEARCH CONTEXT:
 ${researchContext}
 
-
 ${UNTRUSTED_CONTENT_RULE}
 
 Rules:
@@ -123,4 +121,4 @@ Return JSON only:
   ]
 }
 `.trim();
-}
+}

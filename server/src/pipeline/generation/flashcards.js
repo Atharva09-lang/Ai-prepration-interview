@@ -1,10 +1,19 @@
-
+/**
+ * generation/flashcards.js — generates flashcards from requirements and questions.
+ */
 
 import { generateStructured } from '../../llm/client.js';
 import { buildFlashcardsPrompt } from '../../llm/prompts/flashcards.js';
 import { filterValidRequirementIds } from '../coverage.js';
 
 /**
+ * Turns raw LLM output into schema-safe flashcards.
+ *
+ * Drops any card whose front/back is blank or whose requirement_ids contain no
+ * id that actually exists — those would otherwise fail structural validation
+ * and mark the whole kit failed. Ids are reassigned sequentially from startId.
+ *
+ * Exported for unit testing.
  *
  * @param {object[]} rawList           Raw `flashcards` array from the model
  * @param {object[]} validRequirements Requirements whose ids are acceptable
@@ -27,7 +36,6 @@ export function normalizeFlashcards(rawList, validRequirements, startId) {
   return out;
 }
 
-
 /**
  * Generates flashcards for the kit.
  *
@@ -43,7 +51,7 @@ export async function generateFlashcards(requirements, questions, startId = 1) {
 
   try {
     const result = await generateStructured({ type: 'flashcards', prompt, useMock: false });
-     return normalizeFlashcards(result.flashcards ?? [], requirements, startId);
+    return normalizeFlashcards(result.flashcards ?? [], requirements, startId);
   } catch (err) {
     console.warn('[flashcards] generation failed:', err.message);
     // Return minimal flashcards so the kit still passes validation

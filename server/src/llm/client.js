@@ -1,16 +1,4 @@
-/**
- * llm/client.js — unified LLM client.
- *
- * Provider selection:
- *  - GEMINI_API_KEY set → use Google Gemini (gemini-1.5-flash, free tier)
- *  - Otherwise          → use the mock (safe for tests and local dev without a key)
- *
- * Retry policy:
- *  - Up to 3 attempts total (initial + 2 retries)
- *  - Exponential backoff: 2s, 4s
- *  - On 429, respects Retry-After header when present
- *  - On invalid JSON, retries once; second failure throws AppError
- */
+
 
 import { env } from '../config/env.js';
 import { mockGenerate } from './mock.js';
@@ -18,20 +6,40 @@ import { AppError } from '../utils/AppError.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 5;
 const BASE_DELAY_MS = 2000;
 
+const MAX_DELAY_MS = 60_000;
+
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const GEMINI_MODEL = 'gemini-1.5-flash';
+
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
 
 function isRetryableStatus(status) {
   return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
 }
 
-/**
- * Calls Gemini with the given prompt and returns parsed JSON.
- * Throws on unrecoverable errors.
- */
+
+function retryDelaySeconds(headerValue, bodyText) {
+  const header = Number(headerValue);
+  if (Number.isFinite(header) && header > 0) return header;
+
+  if (typeof bodyText === 'string') {
+    const iso = bodyText.match(/"retryDelay"\s*:\s*"([\d.]+)s"/);
+    if (iso) {
+      const secs = Number(iso[1]);
+      if (Number.isFinite(secs) && secs > 0) return secs;
+    }
+    const prose = bodyText.match(/retry in ([\d.]+)\s*s/i);
+    if (prose) {
+      const secs = Number(prose[1]);
+      if (Number.isFinite(secs) && secs > 0) return secs;
+    }
+  }
+  return null;
+}
+
+
 async function callGemini(prompt, retryOnJsonError = true) {
   const url = `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${env.GEMINI_API_KEY}`;
 
@@ -59,8 +67,12 @@ async function callGemini(prompt, retryOnJsonError = true) {
       });
 
       if (res.status === 429) {
-        const retryAfter = Number(res.headers.get('retry-after') ?? BASE_DELAY_MS / 1000);
-        const delay = Math.min(retryAfter * 1000, 30_000);
+        const errText = await res.text().catch(() => '');
+        const secs = retryDelaySeconds(res.headers.get('retry-after'), errText);
+        const backoffSec = Number.isFinite(secs) && secs > 0
+          ? secs
+          : (BASE_DELAY_MS / 1000) * 2 ** attempt;
+        const delay = Math.min(backoffSec * 1000, MAX_DELAY_MS);
         if (attempt < MAX_RETRIES) {
           await sleep(delay);
           continue;
@@ -69,9 +81,14 @@ async function callGemini(prompt, retryOnJsonError = true) {
       }
 
       if (!res.ok) {
+        const errText = await res.text().catch(() => '');
         lastError = new AppError('LLM_ERROR', `Gemini API error: ${res.status}`, 502);
         if (isRetryableStatus(res.status) && attempt < MAX_RETRIES) {
-          await sleep(BASE_DELAY_MS * 2 ** attempt);
+          const secs = retryDelaySeconds(res.headers.get('retry-after'), errText);
+          const backoffSec = Number.isFinite(secs) && secs > 0
+            ? secs
+            : (BASE_DELAY_MS / 1000) * 2 ** attempt;
+          await sleep(Math.min(backoffSec * 1000, MAX_DELAY_MS));
           continue;
         }
         throw lastError;
@@ -80,21 +97,21 @@ async function callGemini(prompt, retryOnJsonError = true) {
       const data = await res.json();
       const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
-      // Parse JSON — Gemini returns JSON string inside text
+     
       try {
         return JSON.parse(rawText);
       } catch (parseErr) {
-        // Try to extract JSON from markdown code block
+      
         const match = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
         if (match) {
           try {
             return JSON.parse(match[1]);
-          } catch { /* fall through */ }
+          } catch {   }
         }
 
         if (retryOnJsonError && attempt < MAX_RETRIES) {
           await sleep(BASE_DELAY_MS);
-          // Recursive retry with one less retry allowed
+        
           return callGemini(prompt, false);
         }
 
@@ -117,15 +134,14 @@ async function callGemini(prompt, retryOnJsonError = true) {
 }
 
 /**
- * Generates structured output from the LLM.
  *
  * @param {{ type: string; prompt: string; useMock?: boolean }} opts
- * @returns {Promise<object>}  Parsed JSON from the LLM
+ * @returns {Promise<object>}  
  */
 export async function generateStructured({ type, prompt, useMock }) {
   if (!type) throw new Error('LLM generation type is required');
 
-  // Use mock when: explicitly requested, or no API key available
+
   const shouldMock = useMock ?? !env.GEMINI_API_KEY;
 
   if (shouldMock) {

@@ -4,9 +4,14 @@ export function findUncoveredRequirements(requirements, questions) {
 }
 
 /**
+ * Keeps only the requirement ids that actually exist, de-duplicated and in
+ * order. LLM output is untrusted: it can invent ids ("r9") or return a
+ * non-array, and either would make the whole kit fail structural validation.
+ * Filtering here turns that into a repaired item (or a dropped one) instead of
+ * a fatal INVALID_KIT.
  *
- * @param {unknown} raw       
- * @param {Set<string>} validIds 
+ * @param {unknown} raw       Raw requirement_ids value from the model
+ * @param {Set<string>} validIds  Set of requirement ids that exist in the kit
  * @returns {string[]}
  */
 export function filterValidRequirementIds(raw, validIds) {

@@ -29,7 +29,6 @@ Rules:
 5. Highlight information that can help the candidate understand the company before an interview.
 6. Include sources when they are available in the research.
 
-
 Return JSON only in this format:
 
 {

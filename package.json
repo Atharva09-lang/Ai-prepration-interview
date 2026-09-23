@@ -4,10 +4,10 @@
   "version": "1.0.0",
   "engines": { "node": ">=20.19" },
   "scripts": {
-    "postinstall": "npm install --prefix server",
+    "postinstall": "cd server && npm install",
     "dev:server": "npm run dev --prefix server",
     "start": "npm run start --prefix server",
     "test": "npm test --prefix server",
-    "evaluate": "node scripts/evaluate.js"
+    "evaluate": "node server/scripts/evaluate.js"
   }
 }

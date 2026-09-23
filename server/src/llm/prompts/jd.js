@@ -1,3 +1,7 @@
+/**
+ * prompts/jd.js — prompt for extracting structured requirements from a job description.
+ */
+
 import { UNTRUSTED_CONTENT_RULE, untrustedBlock } from './safety.js';
 
 export function buildJdExtractionPrompt(jd) {
@@ -7,6 +11,7 @@ You are an interview preparation assistant. Extract structured information from 
 ${untrustedBlock('JOB DESCRIPTION', jd)}
 
 ${UNTRUSTED_CONTENT_RULE}
+
 Rules:
 1. Extract the role title, seniority level, responsibilities, and requirements.
 2. For each requirement, assign:

@@ -3,6 +3,7 @@
 import { generateStructured } from '../../llm/client.js';
 import { UNTRUSTED_CONTENT_RULE, untrustedBlock } from '../../llm/prompts/safety.js';
 
+
 const STAGE_PATTERNS = [
   { label: 'Application / CV review', patterns: ['application', 'cv review', 'resume review', 'apply'] },
   { label: 'Recruiter screen', patterns: ['recruiter', 'phone screen', 'initial call', 'intro call'] },

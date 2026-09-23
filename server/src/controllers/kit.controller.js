@@ -131,8 +131,8 @@ export const updateQuestion = asyncHandler(async (req, res) => {
       setFields[`questions.${qIdx}.${key}`] = req.body[key];
     }
   }
-  // Mark as edited if content fields changed
-  if (req.body.prompt !== undefined || req.body.answer_outline !== undefined) {
+  // Mark as edited if content or category changed, so the item survives regeneration
+  if (req.body.prompt !== undefined || req.body.answer_outline !== undefined || req.body.category !== undefined) {
     setFields[`questions.${qIdx}.origin`] = 'edited';
   }
 
