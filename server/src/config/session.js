@@ -33,7 +33,7 @@ export function sessionMiddleware(store) {
     secret: env.SESSION_SECRET ?? (env.NODE_ENV === 'test' ? 'test-only-secret' : undefined),
     resave: false,
     saveUninitialized: false,
-    rolling: true, // active users stay signed in
+    rolling: true, 
     store,
     cookie: sessionCookieOptions,
   });

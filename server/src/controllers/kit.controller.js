@@ -8,7 +8,7 @@ import { assertObjectId } from '../utils/objectId.js';
 import { buildSchedule } from '../pipeline/schedule.js';
 import { findUncoveredRequirements } from '../pipeline/coverage.js';
 
-// ── CRUD ──────────────────────────────────────────────────────────────────────
+
 
 export const create = asyncHandler(async (req, res) => {
   const { kit, job, duplicate } = await createKit(req.userId, req.validated.body);
@@ -33,13 +33,7 @@ export const remove = asyncHandler(async (req, res) => {
   res.status(204).end();
 });
 
-// ── Builder — kit-level patch ──────────────────────────────────────────────────
 
-/**
- * PATCH /api/kits/:id
- * Allows partial update of top-level kit fields (brief, role title, etc.)
- * Marks the touched section as 'edited'.
- */
 export const patch = asyncHandler(async (req, res) => {
   assertObjectId(req.params.id, 'Kit');
   const kit = await Kit.findOne({ _id: req.params.id, userId: req.userId });
@@ -77,7 +71,7 @@ export const patch = asyncHandler(async (req, res) => {
   res.json({ kit: updated.toJSON() });
 });
 
-// ── Regenerate ────────────────────────────────────────────────────────────────
+
 
 export const regenerate = asyncHandler(async (req, res) => {
   const { section } = req.body;
@@ -86,7 +80,7 @@ export const regenerate = asyncHandler(async (req, res) => {
   res.json({ kit: updatedKit });
 });
 
-// ── Questions ─────────────────────────────────────────────────────────────────
+
 
 export const addQuestion = asyncHandler(async (req, res) => {
   assertObjectId(req.params.id, 'Kit');
@@ -136,9 +130,10 @@ export const updateQuestion = asyncHandler(async (req, res) => {
     setFields[`questions.${qIdx}.origin`] = 'edited';
   }
 
+
   await Kit.updateOne({ _id: kit._id }, { $set: setFields });
 
-  // Rebuild schedule + coverage after question change
+  
   await rebuildScheduleAndCoverage(kit._id);
 
   const updated = await Kit.findById(kit._id);
@@ -153,13 +148,13 @@ export const deleteQuestion = asyncHandler(async (req, res) => {
   const qIdx = kit.questions.findIndex((q) => q.id === req.params.qid && !q.deleted);
   if (qIdx === -1) throw new AppError('NOT_FOUND', `Question ${req.params.qid} not found`, 404);
 
-  // Tombstone — do not physically remove so regeneration cannot resurrect it
+  
   await Kit.updateOne({ _id: kit._id }, { $set: { [`questions.${qIdx}.deleted`]: true } });
   await rebuildScheduleAndCoverage(kit._id);
   res.status(204).end();
 });
 
-// ── Flashcards ────────────────────────────────────────────────────────────────
+
 
 export const addFlashcard = asyncHandler(async (req, res) => {
   assertObjectId(req.params.id, 'Kit');
@@ -223,7 +218,7 @@ export const deleteFlashcard = asyncHandler(async (req, res) => {
   res.status(204).end();
 });
 
-// ── Practice ─────────────────────────────────────────────────────────────────
+
 
 export const getPractice = asyncHandler(async (req, res) => {
   const session = await getPracticeSession(req.userId, req.params.id);
@@ -236,7 +231,6 @@ export const postConfidence = asyncHandler(async (req, res) => {
   res.json({ entry });
 });
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function rebuildScheduleAndCoverage(kitId) {
   const kit = await Kit.findById(kitId);

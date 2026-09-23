@@ -7,11 +7,7 @@ import { cn, CATEGORY_LABEL, DIFFICULTY_LABEL } from '@/lib/utils';
 
 const DIFFICULTY_TONE = { 1: 'success', 2: 'warning', 3: 'accent' };
 
-/**
- * One interview question with inline editing, difficulty control, related
- * requirements, delete, and keyboard-friendly reorder buttons. The parent
- * renders this inside a framer-motion Reorder.Item for drag-and-drop.
- */
+
 export function QuestionCard({
   question,
   requirements = [],
