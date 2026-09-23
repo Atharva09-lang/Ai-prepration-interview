@@ -23,7 +23,8 @@ const RATINGS = [
 
 export default function PracticePage() {
   const { id } = useParams();
-  const [cards, setCards] = useState(null); // ordered [{id, front, back}]
+  const [cards, setCards] = useState(null); // ordered [{id, front, back, confidence, seen_count}]
+  const [rated, setRated] = useState({}); // flashcardId -> confidence given this session
   const [error, setError] = useState(null);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -38,11 +39,19 @@ export default function PracticePage() {
       const byId = Object.fromEntries(
         (kit.flashcards ?? []).filter((f) => !f.deleted).map((f) => [f.id, f]),
       );
+      const statsById = Object.fromEntries((session.cards ?? []).map((c) => [c.id, c]));
       const ordered = (session.order ?? [])
         .map((fid) => byId[fid])
         .filter(Boolean)
-        .map((f) => ({ id: f.id, front: f.front, back: f.back }));
+        .map((f) => ({
+          id: f.id,
+          front: f.front,
+          back: f.back,
+          confidence: statsById[f.id]?.confidence ?? null,
+          seen_count: statsById[f.id]?.seen_count ?? 0,
+        }));
       setCards(ordered);
+      setRated({});
       setIndex(0);
       setFlipped(false);
       setFinished(false);
@@ -59,11 +68,27 @@ export default function PracticePage() {
   const card = cards?.[index];
   const progress = useMemo(() => (total ? (index / total) * 100 : 0), [index, total]);
 
+  // Live coverage: what has been covered and what has not. Ratings from this
+  // session overlay the stored ones so the tracker moves as you practise.
+  const coverage = useMemo(() => {
+    const list = cards ?? [];
+    const valueOf = (c) => (c.id in rated ? rated[c.id] : c.confidence);
+    const covered = list.filter((c) => valueOf(c) !== null && valueOf(c) !== undefined).length;
+    return {
+      total: list.length,
+      covered,
+      notCovered: list.length - covered,
+      needsReview: list.filter((c) => [1, 2].includes(valueOf(c))).length,
+      confident: list.filter((c) => valueOf(c) === 3).length,
+    };
+  }, [cards, rated]);
+
   async function rate(value) {
     if (!card || submitting) return;
     setSubmitting(true);
     try {
       await api.postConfidence(id, card.id, value);
+      setRated((r) => ({ ...r, [card.id]: value }));
       if (index + 1 >= total) {
         setFinished(true);
       } else {
@@ -76,6 +101,17 @@ export default function PracticePage() {
       setSubmitting(false);
     }
   }
+
+  const coverageRow = total > 0 && (
+    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted" aria-live="polite">
+      <span>
+        <span className="font-semibold text-ink">{coverage.covered}</span> of {coverage.total} covered
+      </span>
+      <span>{coverage.notCovered} not covered yet</span>
+      <span>{coverage.needsReview} need review</span>
+      <span>{coverage.confident} confident</span>
+    </div>
+  );
 
   return (
     <RequireAuth>
@@ -114,6 +150,9 @@ export default function PracticePage() {
               <p className="mt-2 text-sm text-muted">
                 You reviewed all {total} card{total === 1 ? '' : 's'}. Nice work.
               </p>
+              <p className="mt-1 text-sm text-muted">
+                {coverage.covered} of {coverage.total} cards covered · {coverage.needsReview} still need review
+              </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
                 <Button variant="outline" onClick={load}>Practise again</Button>
                 <Link href={`/kits/${id}`} className={buttonClasses('primary', 'md')}>Back to kit</Link>
@@ -121,13 +160,19 @@ export default function PracticePage() {
             </motion.div>
           ) : (
             <>
+              {coverageRow}
+
               {/* Progress */}
               <div className="mb-6">
                 <div className="mb-2 flex items-center justify-between text-sm">
                   <span className="font-medium text-ink">
                     Card {index + 1} of {total}
                   </span>
-                  <span className="text-muted">{Math.round(progress)}% through</span>
+                  <span className="text-muted">
+                    {card.seen_count > 0 && !(card.id in rated)
+                      ? `Seen ${card.seen_count}× before`
+                      : `${Math.round(progress)}% through`}
+                  </span>
                 </div>
                 <div
                   className="h-2 w-full overflow-hidden rounded-full bg-surface"

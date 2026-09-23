@@ -307,6 +307,7 @@ export default function KitDetailPage() {
   const company = kit.source?.company || hostnameOf(kit.input?.company_url);
   const requirements = kit.role?.requirements ?? [];
   const uncoveredIds = new Set(kit.coverage?.uncovered_requirement_ids ?? []);
+  const completedDays = new Set(kit.completed_days ?? []);
 
   return (
     <AppShell wide>
@@ -601,7 +602,9 @@ export default function KitDetailPage() {
           <Section
             id="schedule"
             title="Study Schedule"
-            description={`${kit.schedule?.days_available ?? kit.input?.days ?? 0} day plan.`}
+            description={`${kit.schedule?.days_available ?? kit.input?.days ?? 0} day plan${
+              completedDays.size ? ` · ${completedDays.size} of ${kit.schedule?.days?.length ?? 0} complete` : ''
+            }.`}
             onRegenerate={() => regenerate('schedule')}
             regenerating={busySection === 'schedule'}
             action={<Link href={`/schedule/${id}`} className={buttonClasses('outline', 'sm')}>Open schedule</Link>}
@@ -610,7 +613,10 @@ export default function KitDetailPage() {
               {(kit.schedule?.days ?? []).slice(0, 5).map((d) => (
                 <li key={d.day} className="flex items-center justify-between gap-3 rounded-md border border-border bg-background p-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-ink">Day {d.day}</p>
+                    <p className="flex items-center gap-2 text-sm font-medium text-ink">
+                      Day {d.day}
+                      {completedDays.has(d.day) && <Badge tone="success">Done</Badge>}
+                    </p>
                     <p className="truncate text-xs text-muted">{d.focus}</p>
                   </div>
                   <span className="shrink-0 text-xs text-muted">

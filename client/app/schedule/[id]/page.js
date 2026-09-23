@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { AppShell } from '@/components/AppShell';
@@ -11,39 +11,20 @@ import { LoadingState } from '@/components/LoadingState';
 import { EmptyState } from '@/components/EmptyState';
 import { buttonClasses } from '@/components/Button';
 import { useKit } from '@/hooks/useKit';
+import { api } from '@/lib/api';
 import { minutesLabel } from '@/lib/utils';
-
-function storageKey(id) {
-  return `prepkit:schedule:${id}`;
-}
 
 export default function SchedulePage() {
   const { id } = useParams();
-  const { kit, loading, error, refetch } = useKit(id);
-  const [completed, setCompleted] = useState(() => new Set());
+  const { kit, loading, error, refetch, setKit } = useKit(id);
   const [selectedDay, setSelectedDay] = useState(null);
+  const [savingDay, setSavingDay] = useState(null);
+  const [saveError, setSaveError] = useState(null);
 
-  // Load per-kit completion from localStorage (the backend does not track this).
-  useEffect(() => {
-    if (!id) return;
-    try {
-      const raw = localStorage.getItem(storageKey(id));
-      if (raw) setCompleted(new Set(JSON.parse(raw)));
-    } catch {
-      /* ignore malformed storage */
-    }
-  }, [id]);
-
-  const persist = useCallback(
-    (next) => {
-      setCompleted(next);
-      try {
-        localStorage.setItem(storageKey(id), JSON.stringify([...next]));
-      } catch {
-        /* storage may be unavailable (private mode) — keep in-memory only */
-      }
-    },
-    [id],
+  // Completion is stored on the kit, so it follows the user across devices.
+  const completed = useMemo(
+    () => new Set(kit?.completed_days ?? []),
+    [kit],
   );
 
   const days = kit?.schedule?.days ?? [];
@@ -68,10 +49,26 @@ export default function SchedulePage() {
   );
 
   function toggle(dayNum, isDone) {
-    const next = new Set(completed);
-    if (isDone) next.add(dayNum);
-    else next.delete(dayNum);
-    persist(next);
+    // Optimistic: tick the box immediately, then persist. On failure the
+    // previous value is restored and the error is shown, so the tracker never
+    // silently disagrees with the server.
+    const previous = kit?.completed_days ?? [];
+    const optimistic = isDone
+      ? [...new Set([...previous, dayNum])].sort((a, b) => a - b)
+      : previous.filter((d) => d !== dayNum);
+
+    setSaveError(null);
+    setSavingDay(dayNum);
+    setKit({ ...kit, completed_days: optimistic });
+
+    api
+      .setDayComplete(id, dayNum, isDone)
+      .then((res) => setKit({ ...kit, completed_days: res.completed_days }))
+      .catch((err) => {
+        setKit({ ...kit, completed_days: previous });
+        setSaveError(err instanceof Error ? err.message : 'Could not save your progress.');
+      })
+      .finally(() => setSavingDay(null));
   }
 
   if (loading) {
@@ -108,11 +105,32 @@ export default function SchedulePage() {
               {days.length} day{days.length === 1 ? '' : 's'} · {minutesLabel(totalMinutes)} total ·{' '}
               {completed.size}/{days.length || 0} complete
             </p>
+            {days.length > 0 && (
+              <div
+                className="mt-3 h-2 w-full max-w-sm overflow-hidden rounded-full bg-surface"
+                role="progressbar"
+                aria-valuenow={completed.size}
+                aria-valuemin={0}
+                aria-valuemax={days.length}
+                aria-label="Schedule days completed"
+              >
+                <div
+                  className="h-full rounded-full bg-success transition-[width] duration-300"
+                  style={{ width: `${(completed.size / days.length) * 100}%` }}
+                />
+              </div>
+            )}
           </div>
           <Link href={`/practice/${id}`} className={buttonClasses('accent', 'md')}>
             Practise flashcards
           </Link>
         </header>
+
+        {saveError && (
+          <div role="alert" className="rounded-md border border-danger/30 bg-danger/5 px-3.5 py-2.5 text-sm text-danger">
+            {saveError}
+          </div>
+        )}
 
         {days.length === 0 ? (
           <EmptyState
@@ -139,6 +157,7 @@ export default function SchedulePage() {
                     questionCount={d.question_ids?.length ?? 0}
                     state={state}
                     completed={completed.has(d.day)}
+                    saving={savingDay === d.day}
                     onToggle={(v) => toggle(d.day, v)}
                     onSelect={() => setSelectedDay(d.day === selectedDay ? null : d.day)}
                   />

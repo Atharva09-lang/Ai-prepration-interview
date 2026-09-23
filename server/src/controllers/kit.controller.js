@@ -2,7 +2,12 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { AppError } from '../utils/AppError.js';
 import { createKit, listKits, getKitForUser, deleteKit } from '../services/kit.service.js';
 import { regenerateSection } from '../services/regenerate.service.js';
-import { recordConfidence, getPracticeSession } from '../services/practice.service.js';
+import {
+  recordConfidence,
+  getPracticeSession,
+  setDayCompletion,
+  normalizeCompletedDays,
+} from '../services/practice.service.js';
 import { Kit } from '../models/Kit.js';
 import { assertObjectId } from '../utils/objectId.js';
 import { buildSchedule } from '../pipeline/schedule.js';
@@ -231,6 +236,16 @@ export const postConfidence = asyncHandler(async (req, res) => {
   res.json({ entry });
 });
 
+export const putDayCompletion = asyncHandler(async (req, res) => {
+  const day = Number(req.params.day);
+  const completed = req.body?.completed;
+  if (typeof completed !== 'boolean') {
+    throw new AppError('INVALID_BODY', 'completed must be a boolean', 400);
+  }
+  const completed_days = await setDayCompletion(req.userId, req.params.id, day, completed);
+  res.json({ completed_days });
+});
+
 
 async function rebuildScheduleAndCoverage(kitId) {
   const kit = await Kit.findById(kitId);
@@ -244,6 +259,13 @@ async function rebuildScheduleAndCoverage(kitId) {
 
   await Kit.updateOne(
     { _id: kitId },
-    { $set: { schedule, 'coverage.uncovered_requirement_ids': uncovered } },
+    {
+      $set: {
+        schedule,
+        'coverage.uncovered_requirement_ids': uncovered,
+        // Day numbers shift when the schedule is rebuilt — drop the stale ones
+        completed_days: normalizeCompletedDays(kit.completed_days, schedule.days.length),
+      },
+    },
   );
 }

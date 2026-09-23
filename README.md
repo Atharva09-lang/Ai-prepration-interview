@@ -233,6 +233,8 @@ The session re-orders cards lowest confidence first, then most overdue first (us
 
 Together with drag-and-drop reordering, inline editing, per-section regeneration and a live generation timeline, the candidate shapes the kit instead of passively consuming it.
 
+Progress is tracked on the kit itself, not in the browser: practice confidence is stored per flashcard (`practice.<id>`) and schedule days ticked off are stored in `completed_days`, so the tracker follows the user to another device. The practice screen shows what is covered, what is not covered yet, and what needs review, and every session starts with the least confident cards. Day numbers are pruned whenever the schedule is rebuilt, so a shorter schedule cannot leave stale "complete" days behind.
+
 12. Key design decisions and trade-offs
 Decision	Why	Trade-off
 Per-category LLM calls instead of one mega-prompt	Better category-specific quality and clean coverage reasoning	More requests, so more exposure to provider rate limits
@@ -252,7 +254,7 @@ DuckDuckGo HTML for discussion search	No API key or cost	Endpoint can throttle o
 bash
 npm test        # from the repo root; delegates to the server suite
 
-65 Vitest tests cover JD and kit validation, requirement-id sanitising, dedupe, coverage, the kit mapper, auth, the Express app, schedule allocation, and that a failed generation step is reported in warnings rather than swallowed.
+69 Vitest tests cover JD and kit validation, requirement-id sanitising, dedupe, coverage, the kit mapper, auth, the Express app, schedule allocation, and that a failed generation step is reported in warnings rather than swallowed.
 
 14. Edge cases and failure handling
 

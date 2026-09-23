@@ -54,6 +54,58 @@ export async function recordConfidence(userId, kitId, flashcardId, confidence) {
 }
 
 /**
+ * Keeps only day numbers that still exist in the schedule, sorted and
+ * de-duplicated. Day numbers go stale when the schedule is rebuilt (fewer
+ * days), so every write goes through this.
+ *
+ * @param {unknown} days      Raw completed_days value from the document
+ * @param {number}  dayCount  Number of days in the current schedule
+ * @returns {number[]}
+ */
+export function normalizeCompletedDays(days, dayCount) {
+  const max = Number.isInteger(dayCount) && dayCount > 0 ? dayCount : 0;
+  if (!Array.isArray(days)) return [];
+  const kept = new Set();
+  for (const d of days) {
+    if (Number.isInteger(d) && d >= 1 && d <= max) kept.add(d);
+  }
+  return [...kept].sort((a, b) => a - b);
+}
+
+/**
+ * Marks a schedule day complete or not complete.
+ *
+ * @param {string}  userId
+ * @param {string}  kitId
+ * @param {number}  day        1-based day number
+ * @param {boolean} completed
+ * @returns {Promise<number[]>}  The kit's completed day numbers, sorted
+ */
+export async function setDayCompletion(userId, kitId, day, completed) {
+  assertObjectId(kitId, 'Kit');
+
+  if (!Number.isInteger(day) || day < 1) {
+    throw new AppError('INVALID_DAY', 'Day must be a positive integer', 400);
+  }
+
+  const kit = await Kit.findOne({ _id: kitId, userId });
+  if (!kit) throw new AppError('NOT_FOUND', 'Kit not found', 404);
+
+  const dayCount = kit.schedule?.days?.length ?? 0;
+  if (day > dayCount) {
+    throw new AppError('INVALID_DAY', `This kit's schedule only has ${dayCount} day(s)`, 400);
+  }
+
+  const current = normalizeCompletedDays(kit.completed_days, dayCount);
+  const next = completed
+    ? normalizeCompletedDays([...current, day], dayCount)
+    : current.filter((d) => d !== day);
+
+  await Kit.updateOne({ _id: kitId }, { $set: { completed_days: next } });
+  return next;
+}
+
+/**
  * Returns the flashcard IDs in practice session order.
  *
  * Ordering:

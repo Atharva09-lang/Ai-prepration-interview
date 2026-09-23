@@ -8,6 +8,7 @@ import { generateFlashcards } from '../pipeline/generation/flashcards.js';
 import { buildSchedule } from '../pipeline/schedule.js';
 import { runResearch } from '../pipeline/research/index.js';
 import { findUncoveredRequirements } from '../pipeline/coverage.js';
+import { normalizeCompletedDays } from './practice.service.js';
 
 const QUESTION_CATEGORIES = ['technical', 'behavioural', 'system-design', 'company-fit'];
 
@@ -161,7 +162,16 @@ async function regenerateScheduleSection(kit) {
   const activeQuestions = kit.questions.filter((q) => !q.deleted);
   const schedule = buildSchedule(activeQuestions, requirements, kit.input.days);
 
-  await Kit.updateOne({ _id: kit._id }, { $set: { schedule } });
+  await Kit.updateOne(
+    { _id: kit._id },
+    {
+      $set: {
+        schedule,
+        // Day numbers may have shifted — keep only the ones that still exist
+        completed_days: normalizeCompletedDays(kit.completed_days, schedule.days.length),
+      },
+    },
+  );
   return (await Kit.findById(kit._id)).toJSON();
 }
 

@@ -8,7 +8,7 @@ import { cn, minutesLabel } from '@/lib/utils';
  *  - current   → terracotta (the first not-yet-completed day)
  *  - upcoming  → gray
  */
-export function ScheduleCard({ day, focus, minutes, questionCount, state, completed, onToggle, onSelect }) {
+export function ScheduleCard({ day, focus, minutes, questionCount, state, completed, saving, onToggle, onSelect }) {
   const isCompleted = state === 'completed';
   const isCurrent = state === 'current';
 
@@ -87,10 +87,12 @@ export function ScheduleCard({ day, focus, minutes, questionCount, state, comple
           <input
             type="checkbox"
             checked={completed}
+            disabled={saving}
             onChange={(e) => onToggle?.(e.target.checked)}
-            className="h-4 w-4 rounded border-border text-success accent-[#4f8a5b] focus:ring-2 focus:ring-primary/30"
+            className="h-4 w-4 rounded border-border text-success accent-[#4f8a5b] focus:ring-2 focus:ring-primary/30 disabled:opacity-50"
           />
           Mark complete
+          {saving && <span className="text-xs font-normal text-muted" role="status">Saving…</span>}
         </label>
       </div>
     </li>

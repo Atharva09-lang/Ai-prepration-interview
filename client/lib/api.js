@@ -98,6 +98,10 @@ export const api = {
       body: { confidence },
     }),
 
+  // ── Schedule progress ─────────────────────────────────────────────────────
+  setDayComplete: (id, day, completed) =>
+    request(`/api/kits/${id}/schedule/days/${day}`, { method: 'PUT', body: { completed } }),
+
   // ── Jobs ──────────────────────────────────────────────────────────────────
   getJob: (jobId) => request(`/api/jobs/${jobId}`),
 

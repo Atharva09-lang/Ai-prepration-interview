@@ -114,6 +114,9 @@ const kitSchema = new Schema(
       f: { type: Number, default: 0 },
     },
     practice: { type: Map, of: practiceEntrySchema, default: {} },
+    // Day numbers the user has ticked off in the study schedule. Stored on the
+    // kit (not in the browser) so progress survives a new device or browser.
+    completed_days: { type: [Number], default: [] },
   },
   { timestamps: true },
 );

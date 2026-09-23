@@ -36,4 +36,8 @@ router.delete('/:id/flashcards/:fid', kits.deleteFlashcard);
 router.get('/:id/practice',                  kits.getPractice);
 router.post('/:id/practice/:fid/confidence', kits.postConfidence);
 
+// ── Schedule progress ─────────────────────────────────────────────────────────
+// Body: { completed: boolean }
+router.put('/:id/schedule/days/:day',        kits.putDayCompletion);
+
 export default router;
