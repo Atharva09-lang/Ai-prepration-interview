@@ -74,18 +74,25 @@ On <https://vercel.com>:
 2. **Root Directory:** `client` (click *Edit* next to it and set this before deploying).
 3. **Framework Preset:** Next.js (auto-detected).
 4. **Build / Output settings:** leave defaults (`next build`, `next start`).
-5. **Environment variables** — these are **build-time** for `NEXT_PUBLIC_*`, so set
-   them *before* the first deploy:
+5. **Environment variables** — `API_PROXY_TARGET` is read at build time, so set it
+   *before* the first deploy:
 
    | Key | Value |
    | --- | --- |
-   | `NEXT_PUBLIC_API_URL` | your Render URL, e.g. `https://your-api.onrender.com` (no trailing slash) |
+   | `API_PROXY_TARGET` | your Render URL, e.g. `https://your-api.onrender.com` (no trailing slash) |
+
+   The frontend calls its own origin (`/api/...`) and Next.js rewrites proxy those
+   requests to `API_PROXY_TARGET` (see `client/next.config.mjs`). Proxying keeps the
+   session cookie **first-party** on the Vercel domain, so no browser blocks it —
+   in production the client deliberately does not call the API host directly.
+   (`NEXT_PUBLIC_API_URL` also works as the proxy target if it is already set.)
 
 6. **Deploy.** Vercel gives you `https://your-app.vercel.app`.
 7. Go back to Render and set `CLIENT_ORIGIN` to exactly that URL, then let it redeploy.
 
 **Verify:** open the Vercel URL, register a user, and create a kit. The browser should
-show live stage progress and then the full kit.
+show live stage progress and then the full kit. Network tab should show requests going
+to `https://your-app.vercel.app/api/...` (not to the Render host).
 
 ---
 
@@ -94,7 +101,7 @@ show live stage progress and then the full kit.
 - [ ] `NODE_ENV=production` on the backend (enables `Secure`/`SameSite=None` cookies and the SSRF guard that blocks private/loopback addresses).
 - [ ] `SESSION_SECRET` ≥ 32 chars — the server refuses to boot otherwise in production.
 - [ ] `CLIENT_ORIGIN` exactly matches the frontend origin (scheme + host, no trailing slash).
-- [ ] `NEXT_PUBLIC_API_URL` exactly matches the backend origin (no trailing slash).
+- [ ] `API_PROXY_TARGET` exactly matches the backend origin (no trailing slash) and the frontend was redeployed after setting it.
 - [ ] `GEMINI_API_KEY` set — without it kits generate but come back thin/empty with `warnings`.
 - [ ] Atlas Network Access allows the hosts' egress IPs.
 
