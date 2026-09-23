@@ -14,7 +14,7 @@ export function KitCard({ kit, index = 0, onDelete, deleting = false }) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.3) }}
-      className="h-full"
+      className="relative h-full"
     >
       <Link href={`/kits/${kit.id}`} className="block h-full">
         <Card interactive className="flex h-full flex-col p-5">
