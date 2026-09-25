@@ -54,6 +54,39 @@ describe('generation failures are reported, not swallowed', () => {
     expect(warnings).toEqual([expect.stringContaining('questions_empty:')]);
   });
 
+  it('retries once with a corrective prompt when the first answer is unusable', async () => {
+    generateStructured
+      .mockResolvedValueOnce({ questions: [{ ...validQuestion, requirement_ids: ['r9'] }] })
+      .mockResolvedValueOnce({ questions: [validQuestion] });
+    const warnings = [];
+
+    const questions = await generateCategoryQuestions(
+      requirements, role, research, 'company-fit', 3, warnings,
+    );
+
+    expect(questions).toHaveLength(1);
+    expect(questions[0].category).toBe('company-fit');
+    expect(warnings).toEqual([]);
+    expect(generateStructured).toHaveBeenCalledTimes(2);
+    expect(generateStructured.mock.calls[1][0].prompt).toContain('CORRECTION');
+    expect(generateStructured.mock.calls[1][0].prompt).toContain('["r1","r2"]');
+    expect(generateStructured.mock.calls[0][0].prompt).not.toContain('CORRECTION');
+  });
+
+  it('gives up after one retry and says so in the warning', async () => {
+    generateStructured.mockResolvedValue({ questions: [{ prompt: '', answer_outline: '' }] });
+    const warnings = [];
+
+    const questions = await generateCategoryQuestions(
+      requirements, role, research, 'company-fit', 3, warnings,
+    );
+
+    expect(questions).toEqual([]);
+    expect(generateStructured).toHaveBeenCalledTimes(2);
+    expect(warnings).toEqual([expect.stringContaining('retried once')]);
+    expect(warnings[0]).toContain('company-fit');
+  });
+
   it('stays quiet when the category generated questions', async () => {
     generateStructured.mockResolvedValue({ questions: [validQuestion] });
     const warnings = [];

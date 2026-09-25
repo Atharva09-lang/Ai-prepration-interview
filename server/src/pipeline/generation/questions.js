@@ -140,19 +140,31 @@ export async function generateCategoryQuestions(
   const reqs = requirementsForCategory(requirements, category);
   if (!reqs.length && category !== 'company-fit') return [];
 
-  const prompt = buildCategoryQuestionsPrompt({
-    category,
-    requirements: reqs,
-    role,
-    research,
-    idPrefix: `q${startId}`,
-  });
+  const promptFor = (correction) =>
+    buildCategoryQuestionsPrompt({
+      category,
+      requirements: reqs,
+      role,
+      research,
+      idPrefix: `q${startId}`,
+      correction,
+    });
 
   try {
-    const result = await generateStructured({ type: 'questions', prompt, useMock: false });
-    const questions = normalizeQuestions(result.questions ?? [], requirements, category, startId);
+    let result = await generateStructured({ type: 'questions', prompt: promptFor(false), useMock: false });
+    let questions = normalizeQuestions(result?.questions ?? [], requirements, category, startId);
+
+    // The model occasionally answers with an empty list, invented requirement
+    // ids, or blank prompts. Previously one such answer emptied the whole
+    // section. Retry once with the allowed ids spelled out before giving up.
     if (!questions.length) {
-      pushWarning(warnings, `questions_empty: no usable ${category} questions were generated`);
+      console.warn(`[questions] ${category} returned nothing usable — retrying with a corrective prompt`);
+      result = await generateStructured({ type: 'questions', prompt: promptFor(true), useMock: false });
+      questions = normalizeQuestions(result?.questions ?? [], requirements, category, startId);
+    }
+
+    if (!questions.length) {
+      pushWarning(warnings, `questions_empty: no usable ${category} questions were generated (retried once)`);
     }
     return questions;
   } catch (err) {

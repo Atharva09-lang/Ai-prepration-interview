@@ -61,7 +61,14 @@ Return JSON only in this format:
  * @param {object} research   Research context (hiring process, discussion snippets)
  * @param {string} idPrefix   Starting id prefix (e.g. 'q3') to avoid collisions
  */
-export function buildCategoryQuestionsPrompt({ category, requirements, role, research, idPrefix = 'q1' }) {
+export function buildCategoryQuestionsPrompt({
+  category,
+  requirements,
+  role,
+  research,
+  idPrefix = 'q1',
+  correction = false,
+}) {
   const startNum = Number(idPrefix.slice(1)) || 1;
 
   const categoryGuidance = {
@@ -80,6 +87,15 @@ export function buildCategoryQuestionsPrompt({ category, requirements, role, res
     : research?.discussionSnippets?.length
     ? `Interview discussion snippets: ${research.discussionSnippets.slice(0, 2).join(' | ')}`
     : 'No specific company interview process information available.';
+
+  const correctionBlock = correction
+    ? `
+CORRECTION — the previous answer for this category was unusable. Return the questions again and obey these exactly:
+- requirement_ids must be a JSON array of strings copied verbatim from this list: ${JSON.stringify(requirements.map((r) => r.id))}
+- never invent requirement ids, never use numbers, and never leave requirement_ids empty
+- every question needs a non-empty "prompt" and a non-empty "answer_outline"
+`
+    : '';
 
   return `
 You are an interview preparation assistant generating "${category}" interview questions.
@@ -106,7 +122,7 @@ Rules:
 5. Generate 2–4 questions. More requirements = more questions, but avoid padding.
 6. Do not generate questions for requirements that are not in the list.
 7. IDs must be sequential starting from q${startNum}.
-
+${correctionBlock}
 Return JSON only:
 {
   "questions": [
