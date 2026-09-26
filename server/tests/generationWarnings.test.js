@@ -122,6 +122,27 @@ describe('generation failures are reported, not swallowed', () => {
     expect(warnings).toEqual([]);
   });
 
+  it('falls back to all requirements when a category has none of its own kind', async () => {
+    // The UI always shows a Behavioural section, so regenerating it must work
+    // even when the JD has no behavioural/domain requirements of its own.
+    const technicalOnly = [requirements[0]];
+    generateStructured.mockResolvedValue({
+      questions: [{ id: 'q9', requirement_ids: ['r1'], category: 'behavioural', prompt: 'Tell me about a time you dealt with a tight deadline.', answer_outline: 'STAR.', difficulty: 2 }],
+    });
+    const warnings = [];
+
+    const questions = await generateCategoryQuestions(
+      technicalOnly, role, research, 'behavioural', 9, warnings,
+    );
+
+    expect(questions).toHaveLength(1);
+    expect(questions[0].category).toBe('behavioural');
+    expect(questions[0].requirement_ids).toEqual(['r1']);
+    expect(warnings).toEqual([]);
+    // the technical requirement was offered to the model as context
+    expect(generateStructured.mock.calls[0][0].prompt).toContain('Five years of React');
+  });
+
   it('uses a fallback requirement id for company-fit when the model invents ids', async () => {
     // Model returns valid prompts but invented requirement_ids — without a
     // fallback these would all be dropped. With the fallback, they survive

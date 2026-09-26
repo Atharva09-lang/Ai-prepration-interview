@@ -106,11 +106,19 @@ function categoriesToGenerate(requirements) {
  * Returns requirements relevant to a given category.
  * company-fit always gets all requirements for context.
  */
+/**
+ * Requirements relevant to a given category. company-fit always gets the
+ * full list; the other categories prefer their own kinds but fall back to
+ * the full list when the JD has none of that kind — the UI renders every
+ * section with a regenerate button, so a category must never be a dead end.
+ */
 function requirementsForCategory(requirements, category) {
-  if (category === 'company-fit') return requirements;
-  if (category === 'system-design') return requirements.filter((r) => r.kind === 'technical');
-  if (category === 'behavioural') return requirements.filter((r) => r.kind === 'behavioural' || r.kind === 'domain');
-  if (category === 'technical') return requirements.filter((r) => r.kind === 'technical');
+  const pick = (predicate) => {
+    const own = requirements.filter(predicate);
+    return own.length ? own : requirements;
+  };
+  if (category === 'technical' || category === 'system-design') return pick((r) => r.kind === 'technical');
+  if (category === 'behavioural') return pick((r) => r.kind === 'behavioural' || r.kind === 'domain');
   return requirements;
 }
 
@@ -122,10 +130,10 @@ function requirementsForCategory(requirements, category) {
  */
 function anchorRequirement(requirements, category) {
   if (category === 'technical' || category === 'system-design') {
-    return requirements.find((r) => r.kind === 'technical') ?? null;
+    return requirements.find((r) => r.kind === 'technical') ?? requirements[0] ?? null;
   }
   if (category === 'behavioural') {
-    return requirements.find((r) => r.kind === 'behavioural' || r.kind === 'domain') ?? null;
+    return requirements.find((r) => r.kind === 'behavioural' || r.kind === 'domain') ?? requirements[0] ?? null;
   }
   if (category === 'company-fit') {
     return requirements.find((r) => r.kind === 'behavioural' || r.kind === 'domain') ?? requirements[0] ?? null;

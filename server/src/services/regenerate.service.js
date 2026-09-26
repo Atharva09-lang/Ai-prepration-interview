@@ -91,15 +91,18 @@ async function regenerateQuestionCategory(kit, category) {
   const research = buildResearchContext(kit);
   // Single-category call — regenerating 'technical' must not also append
   // system-design / company-fit questions.
-  const newQuestions = await generateCategoryQuestions(requirements, kit.role, research, category, nextId);
+  const warnings = [];
+  const newQuestions = await generateCategoryQuestions(requirements, kit.role, research, category, nextId, warnings);
 
   const survivors = survivingQuestions.filter((q) => !q.deleted);
   // A regeneration that returns nothing would silently empty the section.
-  // Fail loudly instead of applying an empty replacement.
+  // Fail loudly — and pass on the underlying reason (quota, API error) so the
+  // user can tell why nothing came back.
   if (!newQuestions.length) {
+    const detail = warnings.length ? ` (${warnings[0]})` : '';
     throw new AppError(
       'GENERATION_EMPTY',
-      `No ${category} questions could be generated — nothing was changed`,
+      `No ${category} questions could be generated — nothing was changed${detail}`,
       502,
     );
   }
