@@ -140,6 +140,19 @@ export async function generateCategoryQuestions(
   const reqs = requirementsForCategory(requirements, category);
   if (!reqs.length && category !== 'company-fit') return [];
 
+  // When the model returns questions with invented or empty requirement_ids,
+  // normalizeQuestions drops them. For categories where the semantic link is
+  // weaker (company-fit, system-design), provide a fallback so the section
+  // survives instead of going silently empty.
+  const fallbackId =
+    category === 'company-fit'
+      ? (requirements.find((r) => r.kind === 'behavioural' || r.kind === 'domain')?.id
+          ?? requirements[0]?.id
+          ?? null)
+      : category === 'system-design'
+      ? (requirements.find((r) => r.kind === 'technical')?.id ?? null)
+      : null;
+
   const promptFor = (correction) =>
     buildCategoryQuestionsPrompt({
       category,
@@ -152,7 +165,7 @@ export async function generateCategoryQuestions(
 
   try {
     let result = await generateStructured({ type: 'questions', prompt: promptFor(false), useMock: false });
-    let questions = normalizeQuestions(result?.questions ?? [], requirements, category, startId);
+    let questions = normalizeQuestions(result?.questions ?? [], requirements, category, startId, fallbackId);
 
     // The model occasionally answers with an empty list, invented requirement
     // ids, or blank prompts. Previously one such answer emptied the whole
@@ -160,7 +173,7 @@ export async function generateCategoryQuestions(
     if (!questions.length) {
       console.warn(`[questions] ${category} returned nothing usable — retrying with a corrective prompt`);
       result = await generateStructured({ type: 'questions', prompt: promptFor(true), useMock: false });
-      questions = normalizeQuestions(result?.questions ?? [], requirements, category, startId);
+      questions = normalizeQuestions(result?.questions ?? [], requirements, category, startId, fallbackId);
     }
 
     if (!questions.length) {

@@ -55,21 +55,22 @@ describe('generation failures are reported, not swallowed', () => {
   });
 
   it('retries once with a corrective prompt when the first answer is unusable', async () => {
+    // Technical category has no fallback, so invalid ids trigger a retry.
     generateStructured
       .mockResolvedValueOnce({ questions: [{ ...validQuestion, requirement_ids: ['r9'] }] })
       .mockResolvedValueOnce({ questions: [validQuestion] });
     const warnings = [];
 
     const questions = await generateCategoryQuestions(
-      requirements, role, research, 'company-fit', 3, warnings,
+      requirements, role, research, 'technical', 3, warnings,
     );
 
     expect(questions).toHaveLength(1);
-    expect(questions[0].category).toBe('company-fit');
+    expect(questions[0].category).toBe('technical');
     expect(warnings).toEqual([]);
     expect(generateStructured).toHaveBeenCalledTimes(2);
     expect(generateStructured.mock.calls[1][0].prompt).toContain('CORRECTION');
-    expect(generateStructured.mock.calls[1][0].prompt).toContain('["r1","r2"]');
+    expect(generateStructured.mock.calls[1][0].prompt).toContain('"r1"');
     expect(generateStructured.mock.calls[0][0].prompt).not.toContain('CORRECTION');
   });
 
@@ -85,6 +86,27 @@ describe('generation failures are reported, not swallowed', () => {
     expect(generateStructured).toHaveBeenCalledTimes(2);
     expect(warnings).toEqual([expect.stringContaining('retried once')]);
     expect(warnings[0]).toContain('company-fit');
+  });
+
+  it('uses a fallback requirement id for company-fit when the model invents ids', async () => {
+    // Model returns valid prompts but invented requirement_ids — without a
+    // fallback these would all be dropped. With the fallback, they survive
+    // linked to the first behavioural requirement (r2 in our fixture).
+    generateStructured.mockResolvedValue({
+      questions: [
+        { prompt: 'Why this company?', answer_outline: 'Mission alignment.', requirement_ids: ['r99'], difficulty: 2 },
+      ],
+    });
+    const warnings = [];
+
+    const questions = await generateCategoryQuestions(
+      requirements, role, research, 'company-fit', 5, warnings,
+    );
+
+    expect(questions).toHaveLength(1);
+    expect(questions[0].requirement_ids).toEqual(['r2']);
+    expect(questions[0].category).toBe('company-fit');
+    expect(warnings).toEqual([]);
   });
 
   it('stays quiet when the category generated questions', async () => {
