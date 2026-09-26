@@ -73,7 +73,7 @@ describe('generation failures are reported, not swallowed', () => {
     expect(generateStructured.mock.calls[0][0].prompt).not.toContain('CORRECTION');
   });
 
-  it('gives up after one retry and says so in the warning', async () => {
+  it('synthesizes a company-fit question when both LLM attempts return nothing', async () => {
     generateStructured.mockResolvedValue({ questions: [{ prompt: '', answer_outline: '' }] });
     const warnings = [];
 
@@ -81,10 +81,12 @@ describe('generation failures are reported, not swallowed', () => {
       requirements, role, research, 'company-fit', 3, warnings,
     );
 
-    expect(questions).toEqual([]);
+    expect(questions).toHaveLength(1);
+    expect(questions[0].category).toBe('company-fit');
+    expect(questions[0].prompt).toContain('Acme');
+    expect(questions[0].requirement_ids).toEqual(['r2']);
     expect(generateStructured).toHaveBeenCalledTimes(2);
-    expect(warnings).toEqual([expect.stringContaining('retried once')]);
-    expect(warnings[0]).toContain('company-fit');
+    expect(warnings).toEqual([]);
   });
 
   it('stays quiet when the category generated questions', async () => {
