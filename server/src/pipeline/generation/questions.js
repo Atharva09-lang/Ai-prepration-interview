@@ -177,7 +177,23 @@ export async function generateCategoryQuestions(
     }
 
     if (!questions.length) {
-      pushWarning(warnings, `questions_empty: no usable ${category} questions were generated (retried once)`);
+      // Last resort for company-fit: synthesize a minimal question so the
+      // section is never empty. Only fires when both LLM attempts returned
+      // nothing usable (empty array, blank prompts, or all-invalid IDs).
+      const synthId = fallbackId ?? requirements[0]?.id ?? null;
+      if (synthId && category === 'company-fit') {
+        const companyName = research?.companyName || role?.title || 'this company';
+        questions = [{
+          id: `q${startId}`,
+          requirement_ids: [synthId],
+          category,
+          prompt: `What motivates you to join ${companyName}, and how does this role align with your career goals?`,
+          answer_outline: 'Discuss specific aspects of the company mission or culture that resonate; connect to personal career trajectory and what you hope to learn or contribute.',
+          difficulty: 1,
+        }];
+      } else {
+        pushWarning(warnings, `questions_empty: no usable ${category} questions were generated (retried once)`);
+      }
     }
     return questions;
   } catch (err) {
