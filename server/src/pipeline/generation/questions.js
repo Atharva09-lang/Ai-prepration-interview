@@ -80,18 +80,24 @@ export function normalizeQuestions(rawList, validRequirements, category, startId
   return out;
 }
 
+// Domains whose interviews have no system-design round. Unknown domains
+// ('' from old kits, 'other' from unclear JDs) keep the previous behaviour
+// and do generate it.
+const NON_SOFTWARE_DOMAINS = new Set(['marketing', 'finance', 'hr', 'sales', 'data-analyst']);
+
 /**
  * Maps requirement kinds to the categories that should cover them.
  * A requirement may be covered by more than one category.
+ * System-design only applies to software-ish domains — a marketing JD should
+ * not get architecture questions.
  */
-function categoriesToGenerate(requirements) {
+function categoriesToGenerate(requirements, domain) {
   const kinds = new Set(requirements.map((r) => r.kind));
   const cats = new Set();
 
   if (kinds.has('technical')) {
     cats.add('technical');
-    // Only generate system-design if there's a senior-ish role or explicit system req
-    cats.add('system-design');
+    if (!NON_SOFTWARE_DOMAINS.has(domain)) cats.add('system-design');
   }
   if (kinds.has('behavioural') || kinds.has('domain')) {
     cats.add('behavioural');
@@ -279,7 +285,7 @@ export async function generateCategoryQuestions(
 export async function generateQuestions(requirements, role, research, startId = 1, warnings = null) {
   if (!requirements.length) return [];
 
-  const categories = categoriesToGenerate(requirements);
+  const categories = categoriesToGenerate(requirements, role?.domain);
   const allQuestions = [];
   let nextId = startId;
 

@@ -60,6 +60,18 @@ export const KIND_LABEL = {
   domain: 'Domain',
 };
 
+export const DOMAIN_LABEL = {
+  software: 'Software / IT',
+  marketing: 'Marketing',
+  finance: 'Finance',
+  hr: 'HR',
+  sales: 'Sales',
+  'data-analyst': 'Data Analyst',
+};
+
+// Domains with no system-design interview round — the section is hidden for them.
+export const NON_SOFTWARE_DOMAINS = new Set(['marketing', 'finance', 'hr', 'sales', 'data-analyst']);
+
 export const DIFFICULTY_LABEL = {
   1: 'Easy',
   2: 'Medium',

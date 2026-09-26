@@ -25,15 +25,17 @@ Rules:
      - must = "required", "must have", "essential", "you will need", core responsibility
      - nice = "bonus", "nice to have", "preferred", "plus", "desirable", "advantage"
      - When unclear, default to "must" if it reads as a core expectation
-3. If the job description is very short or vague, extract what you can and note it in seniority.
-4. Do not invent requirements that are not implied by the text.
-5. Seniority: "Junior", "Mid-level", "Senior", "Staff", "Principal", "Lead", "Manager", or "Unknown".
-6. Location: extract if mentioned, otherwise empty string.
+3. Domain: classify the job into one of: "software" (IT/engineering roles), "marketing", "finance", "hr", "sales", "data-analyst", or "other" when it does not clearly fit any of these.
+4. If the job description is very short or vague, extract what you can and note it in seniority.
+5. Do not invent requirements that are not implied by the text.
+6. Seniority: "Junior", "Mid-level", "Senior", "Staff", "Principal", "Lead", "Manager", or "Unknown".
+7. Location: extract if mentioned, otherwise empty string.
 
 Return JSON only:
 {
   "title": "Role title",
   "seniority": "Senior",
+  "domain": "software",
   "location": "",
   "responsibilities": [
     "Responsibility 1",

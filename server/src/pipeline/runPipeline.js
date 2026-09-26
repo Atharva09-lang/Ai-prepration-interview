@@ -164,6 +164,7 @@ export async function runPipeline(input, { onProgress = () => {} } = {}) {
       role: {
         title:           extracted.title || '',
         seniority:       extracted.seniority || '',
+        domain:          extracted.domain || 'other',
         responsibilities: extracted.responsibilities ?? [],
         requirements:    extracted.requirements,
       },

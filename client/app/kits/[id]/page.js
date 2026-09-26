@@ -22,7 +22,7 @@ import { ProgressTimeline } from '@/components/ProgressTimeline';
 import { useKit } from '@/hooks/useKit';
 import { useJobPolling, deriveStageStates, deriveStageDetails } from '@/hooks/useJobPolling';
 import { api } from '@/lib/api';
-import { CATEGORY_LABEL, hostnameOf, relativeTime } from '@/lib/utils';
+import { CATEGORY_LABEL, DOMAIN_LABEL, NON_SOFTWARE_DOMAINS, hostnameOf, relativeTime } from '@/lib/utils';
 
 const CATEGORY_ORDER = ['technical', 'behavioural', 'system-design', 'company-fit'];
 
@@ -309,11 +309,26 @@ export default function KitDetailPage() {
   const uncoveredIds = new Set(kit.coverage?.uncovered_requirement_ids ?? []);
   const completedDays = new Set(kit.completed_days ?? []);
 
+  // Non-software domains have no system-design round — hide the section (and
+  // its nav/regenerate entries) rather than showing an empty one. Keep it
+  // when the kit already has system-design questions (legacy kit or added
+  // by hand), so those questions never become invisible.
+  const domainLabel = DOMAIN_LABEL[kit.role?.domain];
+  const showSystemDesign =
+    !NON_SOFTWARE_DOMAINS.has(kit.role?.domain) ||
+    (questionsByCategory['system-design']?.length ?? 0) > 0;
+  const categoryOrder = showSystemDesign
+    ? CATEGORY_ORDER
+    : CATEGORY_ORDER.filter((c) => c !== 'system-design');
+  const navSections = showSystemDesign
+    ? SECTIONS
+    : SECTIONS.filter((s) => s.href !== '#system-design');
+
   return (
     <AppShell wide>
       <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8">
         <Sidebar
-          items={SECTIONS}
+          items={navSections}
           activeHref={`/kits/${id}`}
           className="mb-6 lg:mb-0"
           footer={
@@ -341,6 +356,7 @@ export default function KitDetailPage() {
                 <p className="mt-0.5 text-sm text-muted">
                   {kit.role?.title || 'Role'}
                   {kit.role?.seniority ? ` · ${kit.role.seniority}` : ''}
+                  {domainLabel ? ` · ${domainLabel}` : ''}
                 </p>
               </div>
 
@@ -503,7 +519,7 @@ export default function KitDetailPage() {
           </Section>
 
           
-          {CATEGORY_ORDER.map((category) => (
+          {categoryOrder.map((category) => (
             <QuestionSection
               key={category}
               id={category}
@@ -634,7 +650,12 @@ export default function KitDetailPage() {
         </div>
       </div>
 
-      <RegenerateModal open={regenOpen} onClose={() => setRegenOpen(false)} onPick={regenerate} />
+      <RegenerateModal
+        open={regenOpen}
+        onClose={() => setRegenOpen(false)}
+        onPick={regenerate}
+        showSystemDesign={showSystemDesign}
+      />
 
       <AddItemModal
         state={addState}
@@ -873,12 +894,12 @@ function EditableList({ items, editMode, onChange, emptyLabel }) {
   );
 }
 
-function RegenerateModal({ open, onClose, onPick }) {
+function RegenerateModal({ open, onClose, onPick, showSystemDesign = true }) {
   const options = [
     { key: 'brief', label: 'Company Brief' },
     { key: 'technical', label: 'Technical Questions' },
     { key: 'behavioural', label: 'Behavioural Questions' },
-    { key: 'system-design', label: 'System Design Questions' },
+    ...(showSystemDesign ? [{ key: 'system-design', label: 'System Design Questions' }] : []),
     { key: 'company-fit', label: 'Company Fit Questions' },
     { key: 'flashcards', label: 'Flashcards' },
     { key: 'schedule', label: 'Study Schedule' },

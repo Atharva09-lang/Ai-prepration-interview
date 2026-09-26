@@ -3,6 +3,30 @@
 import { generateStructured } from '../llm/client.js';
 import { buildJdExtractionPrompt } from '../llm/prompts/jd.js';
 
+// The domains the extractor may return. Unknown values collapse to 'other',
+// which question generation treats as "keep the old, software-flavoured
+// behaviour" so older kits and unclear JDs never lose sections.
+export const JD_DOMAINS = ['software', 'marketing', 'finance', 'hr', 'sales', 'data-analyst', 'other'];
+
+const DOMAIN_ALIASES = {
+  'software/it': 'software',
+  it: 'software',
+  tech: 'software',
+  technology: 'software',
+  engineering: 'software',
+  'data analyst': 'data-analyst',
+  'data analytics': 'data-analyst',
+  analytics: 'data-analyst',
+  'human resources': 'hr',
+  'human-resources': 'hr',
+};
+
+export function normalizeDomain(raw) {
+  const value = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  const mapped = DOMAIN_ALIASES[value] ?? value;
+  return JD_DOMAINS.includes(mapped) ? mapped : 'other';
+}
+
 /**
  * 
  *
@@ -10,6 +34,7 @@ import { buildJdExtractionPrompt } from '../llm/prompts/jd.js';
  * @returns {Promise<{
  *   title: string;
  *   seniority: string;
+ *   domain: string;
  *   location: string;
  *   responsibilities: string[];
  *   requirements: { id: string; text: string; kind: string; priority: string }[];
@@ -34,6 +59,7 @@ export async function extractJd(jd) {
     return {
       title: '',
       seniority: 'Unknown',
+      domain: 'other',
       location: '',
       responsibilities: [],
       requirements: isThin
@@ -65,6 +91,7 @@ export async function extractJd(jd) {
   return {
     title: result.title ?? '',
     seniority: result.seniority ?? 'Unknown',
+    domain: normalizeDomain(result.domain),
     location: result.location ?? '',
     responsibilities: result.responsibilities ?? [],
     requirements,

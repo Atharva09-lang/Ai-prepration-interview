@@ -69,6 +69,7 @@ export const kitSchema = z.object({
   role: z.object({
     title: z.string(),
     seniority: z.string(),
+    domain: z.string(),
     responsibilities: z.array(z.string()),
     requirements: z.array(requirementSchema),
   }),

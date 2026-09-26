@@ -8,6 +8,7 @@ const mockResponses = {
   requirements: {
     title: 'Backend Engineer',
     seniority: 'Entry-level',
+    domain: 'software',
     responsibilities: [
       'Develop and maintain backend services',
       'Work with APIs and databases',

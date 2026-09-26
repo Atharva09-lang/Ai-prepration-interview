@@ -14,6 +14,7 @@ export function makeKit() {
     role: {
       title: 'Backend Engineer',
       seniority: 'senior',
+      domain: 'software',
       responsibilities: ['Build APIs'],
       requirements: [
         { id: 'r1', text: '5+ years Node.js', kind: 'technical', priority: 'must' },

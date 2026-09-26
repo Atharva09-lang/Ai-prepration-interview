@@ -61,6 +61,19 @@ Return JSON only in this format:
  * @param {object} research   Research context (hiring process, discussion snippets)
  * @param {string} idPrefix   Starting id prefix (e.g. 'q3') to avoid collisions
  */
+/**
+ * Per-domain focus for the technical section — a marketing JD must get
+ * campaign/SEO questions, not DSA. Unknown domains keep the generic wording.
+ */
+const DOMAIN_TECH_FOCUS = {
+  software: 'data structures and algorithms, APIs, OOP, databases, and system design',
+  'data-analyst': 'SQL, Excel, dashboards (Power BI or similar), and statistics',
+  marketing: 'campaigns, SEO, analytics, and brand strategy',
+  finance: 'financial statements, ratio analysis, and Excel modelling',
+  hr: 'recruitment, conflict resolution, and employee relations',
+  sales: 'objection handling, negotiation, and CRM tools',
+};
+
 export function buildCategoryQuestionsPrompt({
   category,
   requirements,
@@ -71,11 +84,14 @@ export function buildCategoryQuestionsPrompt({
 }) {
   const startNum = Number(idPrefix.slice(1)) || 1;
 
+  const domainFocus = DOMAIN_TECH_FOCUS[role?.domain];
+
   const categoryGuidance = {
-    technical:
-      'Focus on hands-on technical skills, tools, frameworks, languages, and problem-solving. Include at least one question per must-have technical requirement.',
+    technical: domainFocus
+      ? `Focus on this role's domain skills — ${domainFocus} — plus the tools, methods, and problem-solving the requirements describe. Include at least one question per must-have technical requirement.`
+      : 'Focus on hands-on technical skills, tools, frameworks, languages, and problem-solving. Include at least one question per must-have technical requirement.',
     behavioural:
-      'Focus on past experience, soft skills, leadership, collaboration, and communication. Use STAR-style prompts where appropriate.',
+      'Focus on past experience, soft skills, leadership, collaboration, communication, and conflict resolution — the common HR-round questions that apply to every role. Use STAR-style prompts where appropriate.',
     'system-design':
       'Focus on architecture, scalability, trade-offs, and design decisions relevant to the role seniority. Avoid trivial toy problems.',
     'company-fit':
@@ -104,7 +120,7 @@ CATEGORY FOCUS:
 ${categoryGuidance[category] ?? 'Generate relevant interview questions.'}
 
 ROLE:
-${JSON.stringify({ title: role.title, seniority: role.seniority }, null, 2)}
+${JSON.stringify({ title: role.title, seniority: role.seniority, domain: role.domain }, null, 2)}
 
 REQUIREMENTS (relevant to this category):
 ${JSON.stringify(requirements, null, 2)}

@@ -91,6 +91,7 @@ const kitSchema = new Schema(
     role: {
       title: String,
       seniority: String,
+      domain: String,
       responsibilities: [String],
       requirements: [requirementSchema],
     },
