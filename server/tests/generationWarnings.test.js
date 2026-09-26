@@ -45,11 +45,11 @@ describe('generation failures are reported, not swallowed', () => {
     expect(warnings[0]).toContain('429');
   });
 
-  it('records a category that returned nothing usable', async () => {
+  it('records an unusable category when there is no requirement to anchor a fallback', async () => {
     generateStructured.mockResolvedValue({ questions: [] });
     const warnings = [];
 
-    await generateCategoryQuestions(requirements, role, research, 'technical', 1, warnings);
+    await generateCategoryQuestions([], role, research, 'company-fit', 1, warnings);
 
     expect(warnings).toEqual([expect.stringContaining('questions_empty:')]);
   });
@@ -87,6 +87,38 @@ describe('generation failures are reported, not swallowed', () => {
     expect(questions[0].prompt).toContain('Acme');
     expect(questions[0].requirement_ids).toEqual(['r2']);
     expect(generateStructured).toHaveBeenCalledTimes(2);
+    expect(warnings).toEqual([]);
+  });
+
+  it('synthesizes a system-design question tied to the technical requirement', async () => {
+    generateStructured.mockResolvedValue({ questions: [] });
+    const warnings = [];
+
+    const questions = await generateCategoryQuestions(
+      requirements, role, research, 'system-design', 4, warnings,
+    );
+
+    expect(questions).toHaveLength(1);
+    expect(questions[0].id).toBe('q4');
+    expect(questions[0].category).toBe('system-design');
+    expect(questions[0].requirement_ids).toEqual(['r1']);
+    expect(questions[0].prompt).toContain('Five years of React');
+    expect(generateStructured).toHaveBeenCalledTimes(2);
+    expect(warnings).toEqual([]);
+  });
+
+  it('synthesizes a technical question tied to the technical requirement', async () => {
+    generateStructured.mockResolvedValue({ questions: [] });
+    const warnings = [];
+
+    const questions = await generateCategoryQuestions(
+      requirements, role, research, 'technical', 7, warnings,
+    );
+
+    expect(questions).toHaveLength(1);
+    expect(questions[0].id).toBe('q7');
+    expect(questions[0].category).toBe('technical');
+    expect(questions[0].requirement_ids).toEqual(['r1']);
     expect(warnings).toEqual([]);
   });
 

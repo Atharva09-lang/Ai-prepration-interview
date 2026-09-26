@@ -115,6 +115,70 @@ function requirementsForCategory(requirements, category) {
 }
 
 /**
+ * Picks the requirement a category falls back to when the model gives no
+ * usable requirement links — or no questions at all. company-fit prefers a
+ * behavioural/domain requirement (culture and motivation live there);
+ * technical and system-design prefer a technical one.
+ */
+function anchorRequirement(requirements, category) {
+  if (category === 'technical' || category === 'system-design') {
+    return requirements.find((r) => r.kind === 'technical') ?? null;
+  }
+  if (category === 'behavioural') {
+    return requirements.find((r) => r.kind === 'behavioural' || r.kind === 'domain') ?? null;
+  }
+  if (category === 'company-fit') {
+    return requirements.find((r) => r.kind === 'behavioural' || r.kind === 'domain') ?? requirements[0] ?? null;
+  }
+  return requirements[0] ?? null;
+}
+
+/**
+ * Builds the requirement-linked question used when the model failed twice.
+ * Templates are intentionally plain: they only run after a real failure, and
+ * a generic-but-linked question beats an empty section in a finished kit.
+ */
+function buildFallbackQuestion(category, requirement, role, research, startId) {
+  const text = (requirement.text ?? '').trim().replace(/[.;]+$/, '');
+  const companyName = research?.companyName || role?.title || 'this company';
+
+  const templates = {
+    technical: {
+      prompt: `Walk me through your hands-on experience with: ${text}. What have you built with it, and what problems did you run into?`,
+      answer_outline: 'Concrete projects and tools used; depth of ownership; problems solved and lessons learned; how the skill was applied in practice.',
+      difficulty: 2,
+    },
+    behavioural: {
+      prompt: `Tell me about a time you demonstrated: ${text}. Describe the situation, what you did, and the outcome.`,
+      answer_outline: 'Use a STAR structure: set the situation and task, describe your specific actions, and quantify the result or lesson learned.',
+      difficulty: 1,
+    },
+    'system-design': {
+      prompt: `Design a system that would put this requirement to use: ${text}. Cover the architecture, how it scales, and the trade-offs you would weigh.`,
+      answer_outline: 'Clarify requirements and constraints; sketch the components and data flow; discuss scaling and failure modes; justify the key design decisions.',
+      difficulty: 2,
+    },
+    'company-fit': {
+      prompt: `What motivates you to join ${companyName}, and how does this role align with your career goals?`,
+      answer_outline: 'Discuss specific aspects of the company mission or culture that resonate; connect to personal career trajectory and what you hope to learn or contribute.',
+      difficulty: 1,
+    },
+  };
+
+  const template = templates[category];
+  if (!template) return null;
+
+  return {
+    id: `q${startId}`,
+    requirement_ids: [requirement.id],
+    category,
+    prompt: template.prompt,
+    answer_outline: template.answer_outline,
+    difficulty: template.difficulty,
+  };
+}
+
+/**
  * Generates questions for a single category in one LLM call.
  *
  * Exported separately from `generateQuestions` so callers that only want one
@@ -141,17 +205,13 @@ export async function generateCategoryQuestions(
   if (!reqs.length && category !== 'company-fit') return [];
 
   // When the model returns questions with invented or empty requirement_ids,
-  // normalizeQuestions drops them. For categories where the semantic link is
-  // weaker (company-fit, system-design), provide a fallback so the section
-  // survives instead of going silently empty.
+  // normalizeQuestions drops them. For the categories where the link is weaker
+  // (company-fit, system-design), let it repair them onto an anchor
+  // requirement; the same anchor lets us synthesize a question if both
+  // attempts come back empty.
+  const anchor = anchorRequirement(requirements, category);
   const fallbackId =
-    category === 'company-fit'
-      ? (requirements.find((r) => r.kind === 'behavioural' || r.kind === 'domain')?.id
-          ?? requirements[0]?.id
-          ?? null)
-      : category === 'system-design'
-      ? (requirements.find((r) => r.kind === 'technical')?.id ?? null)
-      : null;
+    category === 'company-fit' || category === 'system-design' ? (anchor?.id ?? null) : null;
 
   const promptFor = (correction) =>
     buildCategoryQuestionsPrompt({
@@ -177,20 +237,13 @@ export async function generateCategoryQuestions(
     }
 
     if (!questions.length) {
-      // Last resort for company-fit: synthesize a minimal question so the
-      // section is never empty. Only fires when both LLM attempts returned
-      // nothing usable (empty array, blank prompts, or all-invalid IDs).
-      const synthId = fallbackId ?? requirements[0]?.id ?? null;
-      if (synthId && category === 'company-fit') {
-        const companyName = research?.companyName || role?.title || 'this company';
-        questions = [{
-          id: `q${startId}`,
-          requirement_ids: [synthId],
-          category,
-          prompt: `What motivates you to join ${companyName}, and how does this role align with your career goals?`,
-          answer_outline: 'Discuss specific aspects of the company mission or culture that resonate; connect to personal career trajectory and what you hope to learn or contribute.',
-          difficulty: 1,
-        }];
+      // Last resort: both attempts returned nothing usable (empty array, blank
+      // fields, or ids that could not be repaired). Ship one requirement-linked
+      // question rather than an empty section — a warning still fires when
+      // there is no requirement to anchor to.
+      const synthetic = anchor ? buildFallbackQuestion(category, anchor, role, research, startId) : null;
+      if (synthetic) {
+        questions = [synthetic];
       } else {
         pushWarning(warnings, `questions_empty: no usable ${category} questions were generated (retried once)`);
       }
