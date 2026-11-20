@@ -20,7 +20,7 @@ function isActive(pathname, href) {
 }
 
 export function Navbar() {
-  const { user, loading, logout } = useAuth();
+  const { user, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -65,9 +65,7 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          {loading ? (
-            <div className="h-9 w-24 animate-pulse rounded-md bg-surface" aria-hidden="true" />
-          ) : user ? (
+          {user ? (
             <>
               <span
                 className="hidden max-w-[180px] truncate rounded-full bg-surface px-3 py-1.5 text-sm text-muted lg:inline"
